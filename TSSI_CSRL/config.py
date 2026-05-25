@@ -51,7 +51,7 @@ class TrainingConfig:
         bigram_alpha_candidates: Candidate alphas for bigram rescoring.
     """
 
-    base_path: str = "C:/data/phoenix"
+    base_path: str = "/home/ebufi/phoenix"
     annotations_dir: str = ""
     pose_dir: str = ""
     results_dir: str = "results"
