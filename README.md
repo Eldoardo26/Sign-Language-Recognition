@@ -4,7 +4,7 @@
 
 Pipeline di Deep Learning per il riconoscimento della lingua dei segni (CSLR). Il progetto implementa un'architettura **PoseNetworkCTC** (basata su DenseNet121, TCN, Attention e BiLSTM) con l'integrazione di tecniche di ottimizzazione avanzate e data augmentation basata su **TSSI** (Time-Shifted Skeleton Interpolation).
 
-## 🚀 Setup e Installazione
+##  Setup e Installazione
 
 Il progetto utilizza **[uv](https://github.com/astral-sh/uv)** per una gestione deterministica delle dipendenze.
 
@@ -25,7 +25,7 @@ uv sync
 
 *(Questo comando crea automaticamente l'ambiente virtuale con tutte le versioni esatte delle librerie necessarie).*
 
-## 📓 Architettura della Pipeline
+##  Architettura della Pipeline
 
 Il progetto è modulare. Il notebook `csrl/main.ipynb` funge da orchestratore per i seguenti moduli Python:
 
