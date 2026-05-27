@@ -22,9 +22,6 @@ uv sync
 
 ```
 
-
-*(Questo comando crea automaticamente l'ambiente virtuale con tutte le versioni esatte delle librerie necessarie).*
-
 ##  Architettura della Pipeline
 
 Il progetto è modulare. Il notebook `csrl/main.ipynb` funge da orchestratore per i seguenti moduli Python:
@@ -46,7 +43,6 @@ L'intero flusso di lavoro è gestito tramite il notebook Jupyter `csrl/main.ipyn
 2. **Seleziona il Kernel**: Apri `csrl/main.ipynb`, clicca su "Select Kernel" (in alto a destra) e seleziona l'ambiente `Python (UV-Env)` che punta alla cartella `.venv` locale.
 3. **Esecuzione**: Esegui le celle in ordine. Il notebook importa automaticamente tutti i moduli dalla cartella `csrl/`.
 
-*Nota: Se aggiungi nuove dipendenze, utilizza `uv add <nome_libreria>` nel terminale e riavvia il kernel del notebook.*
 
 ##  Note tecniche
 
