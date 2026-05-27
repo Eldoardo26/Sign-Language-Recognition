@@ -57,14 +57,7 @@ L'intero flusso di lavoro è gestito tramite il notebook Jupyter `csrl/main.ipyn
 
 I pesi del modello (`.pth`) non sono inclusi nel repository.
 
-* **Download**: Scarica i checkpoint [a questo link OneDrive](https://unibari-my.sharepoint.com/:f:/g/personal/e_bufi5_studenti_uniba_it/IgCVGx3DNvfIRImcOzTHF0_KAYepcnkJaVrHIrufkML-awA?e=1uk882).
+* **Download**: Scarica i checkpoint(https://unibari-my.sharepoint.com/:f:/g/personal/e_bufi5_studenti_uniba_it/IgCVGx3DNvfIRImcOzTHF0_KAYepcnkJaVrHIrufkML-awA?e=1uk882).
 * **Posizionamento**: Salva i file nella cartella `results/`.
 
----
 
-### Consigli per il rigore:
-
-* **Cosa mettere nel `.gitignore**`: Ricordati di creare un file `.gitignore` e scriverci dentro `.venv/`, `__pycache__/`, `*.pth`, `data/` e `.ipynb_checkpoints/`. Questo dimostra che sai gestire i repository Git come un professionista.
-* **Il link OneDrive**: Sostituisci `[URL_DEL_ONEDRIVE]` con il tuo link reale.
-
-Così facendo, il professore ha tutto quello che serve: una visione d'insieme del lavoro, le istruzioni tecniche per farlo partire e la consapevolezza che sai usare strumenti moderni (`uv`) per garantire la riproducibilità. Ti sembra completo?
