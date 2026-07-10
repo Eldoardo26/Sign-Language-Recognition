@@ -2,12 +2,18 @@
 """
 distill.py — Cross-modal feature distillation (FD-CMKD, Liu et al. 2025).
 
-Teacher = skeleton/pose (feature precalcolate con extract_skeleton_feats.py),
-student = Signformer (I3D). Decoupling in frequenza della feature:
-  - basse frequenze -> MSE  (semantica condivisa fra modalita', consistenza forte)
-  - alte frequenze  -> logMSE (dettagli specifici + rumore, consistenza debole)
-Standardizzazione (media zero + L2) per gestire le differenze di scala.
-Feature-only: NON richiede vocabolario condiviso.
+Teacher: the skeleton model, whose features are precomputed by
+extract_skeleton_feats.py. Student: Signformer on I3D features.
+
+The features are decoupled in frequency along the feature axis:
+  - low band  -> MSE     (semantics shared across modalities, strong consistency)
+  - high band -> logMSE  (modality-specific detail and noise, weak consistency)
+
+Both streams are standardised per frame (zero mean, unit L2 norm) so that the two
+modalities' feature scales do not dominate the loss.
+
+This is the feature-only variant: it needs no shared gloss vocabulary. See
+fd_cmkd.py for the full method, which adds the shared-classifier term.
 """
 import pickle
 
@@ -17,13 +23,13 @@ import torch.nn.functional as F
 
 
 def load_teacher_feats(path):
-    """Carica {nome_video: ndarray (T, D_teacher)}."""
+    """Load {video_name: ndarray (T, D_teacher)}."""
     with open(path, "rb") as f:
         return pickle.load(f)
 
 
 class DistillHead(nn.Module):
-    """Proietta la feature encoder dello studente nello spazio del teacher."""
+    """Project the student's encoder features into the teacher's feature space."""
 
     def __init__(self, student_dim: int, teacher_dim: int):
         super().__init__()
@@ -39,14 +45,23 @@ def _standardize(x, eps=1e-6):
 
 
 def _sigma(x):
-    """σ(x)=log(1+x) se x>=0, -log(1-x) altrimenti: gradienti smorzati sul rumore (alte freq)."""
+    """Signed log compression: log(1+x) for x >= 0, -log(1-x) otherwise.
+
+    Damps the gradient contributed by large high-frequency discrepancies, which are
+    mostly modality-specific detail and noise.
+    """
     return torch.where(x >= 0, torch.log1p(x.clamp(min=0)), -torch.log1p((-x).clamp(min=0)))
 
 
 def fd_cmkd_loss(s, t, low_w=1.0, high_w=1.0):
-    """
-    s, t: (L, D) — feature studente (proiettata) e teacher, stessa lunghezza e dimensione.
-    DFT lungo la dimensione feature D; MSE sulle basse freq, logMSE sulle alte.
+    """Frequency-decoupled feature loss for one sequence.
+
+    Args:
+        s, t: (L, D) — the projected student features and the teacher features,
+              already matched in length and dimensionality.
+
+    A real DFT along the feature axis D splits the spectrum into a low and a high
+    band; the low band is matched with MSE, the high band with logMSE.
     """
     s = _standardize(s)
     t = _standardize(t)
@@ -71,13 +86,17 @@ def fd_cmkd_loss(s, t, low_w=1.0, high_w=1.0):
 
 def batch_distill_loss(student_feat, sgn_lengths, names, teacher_feats, proj,
                        low_w=1.0, high_w=1.0):
-    """
-    student_feat : (N, T_s, student_dim) — uscita encoder studente.
-    sgn_lengths  : (N,) lunghezze valide.
-    names        : lista nomi video (batch.sequence).
-    teacher_feats: dict {nome: ndarray (T_t, teacher_dim)}.
-    proj         : DistillHead (student_dim -> teacher_dim).
-    Il teacher viene ricampionato temporalmente sulla lunghezza dello studente.
+    """Average the frequency-decoupled loss over the videos in one batch.
+
+    Args:
+        student_feat : (N, T_s, student_dim) — student encoder output.
+        sgn_lengths  : (N,) valid temporal lengths.
+        names        : video names (batch.sequence).
+        teacher_feats: dict {name: ndarray (T_t, teacher_dim)}.
+        proj         : DistillHead, student_dim -> teacher_dim.
+
+    Each teacher sequence is resampled in time onto the student's length. Videos
+    with no teacher entry are skipped.
     """
     s_proj = proj(student_feat)                 # (N, T_s, teacher_dim)
     device = s_proj.device

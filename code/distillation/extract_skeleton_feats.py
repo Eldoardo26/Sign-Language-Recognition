@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 """
-extract_skeleton_feats.py — estrae le feature dell'encoder del modello SKELETON (teacher)
-per la cross-modal distillation verso il Signformer (student).
+extract_skeleton_feats.py — export the encoder features of the skeleton teacher,
+for cross-modal distillation into the Signformer student.
 
-Per ogni video salva la sequenza di feature pre-classificatore (B,T,512) del teacher pose.
-Output: skeleton_feats/{train,dev,test}.pkl = {nome_video: np.float16 (T, 512)}
+For every video, the teacher's pre-classifier feature sequence is saved.
+Output: skeleton_feats/{train,dev,test}.pkl = {video_name: np.float16 (T, 512)}
 
-Uso (env: sign-language-dnn, dalla cartella MSKA-SLR):
+Usage:
     python extract_skeleton_feats.py
 """
 import os, pickle
@@ -38,7 +38,7 @@ DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 os.makedirs(OUT_DIR, exist_ok=True)
 
 # ============================================================
-# SCHELETRO 75 KEYPOINT + TSSI  (identico al notebook tssi75_cslr)
+# 75-keypoint skeleton + TSSI (identical to the tssi75_cslr notebook)
 # ============================================================
 NUM_JOINTS = 75; LH0, RH0 = 33, 54
 _pose_edges = [(0,1),(1,2),(2,3),(3,7),(0,4),(4,5),(5,6),(6,8),(9,10),
@@ -82,7 +82,8 @@ def generate_tssi_75(kp):
     return tssi
 
 # ============================================================
-# MODELLO (identico al notebook) — serve solo per caricare i pesi ed estrarre la feature
+# Model (identical to the notebook). Only needed to load the weights and read out
+# the pre-classifier features; the classifier head itself is never used.
 # ============================================================
 class DropPath(nn.Module):
     def __init__(self, p=0.0): super().__init__(); self.p = p
@@ -126,14 +127,14 @@ class PoseNetworkCTC(nn.Module):
         self.aux_proj = nn.Sequential(nn.Linear(hidden_dim, hidden_dim*2),
                                       nn.LayerNorm(hidden_dim*2), nn.Dropout(dropout*0.5))
     def forward_feat(self, x):
-        """Ritorna la feature pre-classificatore (B, T, hidden*2) — quella da distillare."""
+        """Return the pre-classifier features (B, T, hidden*2): what gets distilled."""
         B, C, J, T = x.shape
         xf = x.reshape(B, C*J, T)
         fm = self.tcn_first(xf).permute(0, 2, 1)
         feat = self.tcn_second(fm.permute(0, 2, 1)).permute(0, 2, 1)
         feat = self.temporal_attn(feat)
         feat, _ = self.bilstm(feat)
-        feat = self.norm(feat)          # (B, T, hidden*2)  <-- feature teacher
+        feat = self.norm(feat)          # (B, T, hidden*2) — the teacher features
         return feat
 
 # ============================================================
@@ -152,7 +153,7 @@ model = PoseNetworkCTC(num_classes=num_classes, in_channels=NUM_JOINTS*3,
                        drop_path_rate=cfg.get('drop_path_rate', 0.1),
                        attn_heads=cfg.get('attn_heads', 4)).to(DEVICE)
 model.load_state_dict(sd); model.eval()
-print(f'teacher caricato | num_classes={num_classes} | feat_dim={hidden*2} | dev={DEVICE}')
+print(f'teacher loaded | num_classes={num_classes} | feat_dim={hidden*2} | device={DEVICE}')
 
 # ============================================================
 # ESTRAZIONE
@@ -173,8 +174,8 @@ def extract_split(split):
         if (i+1) % 500 == 0: print(f'  [{split}] {i+1}/{len(raw)}')
     out = os.path.join(OUT_DIR, f'{split}.pkl')
     with open(out, 'wb') as fp: pickle.dump(feats, fp)
-    print(f'[{split}] {len(feats)} feature salvate -> {out}')
+    print(f'[{split}] wrote {len(feats)} feature sequences -> {out}')
 
 for split in ('train', 'dev', 'test'):
     extract_split(split)
-print('FATTO. feature teacher pronte in', OUT_DIR)
+print('Done. Teacher features written to', OUT_DIR)

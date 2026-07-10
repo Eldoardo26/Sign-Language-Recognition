@@ -46,7 +46,7 @@ OUT_DIR      = Path(os.environ.get("MSKA_DATA_DIR",
 
 SPLITS = {
     "train": ("train", "PHOENIX-2014-T.train.corpus.csv"),
-    "dev":   ("dev",   "PHOENIX-2014-T.dev.corpus.csv"),   # cartella keypoints: dev
+    "dev":   ("dev",   "PHOENIX-2014-T.dev.corpus.csv"),   # keypoints folder is named "dev"
     "test":  ("test",  "PHOENIX-2014-T.test.corpus.csv"),
 }
 # -----------------------------------------------------------------------------

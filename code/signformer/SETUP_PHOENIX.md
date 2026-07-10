@@ -1,66 +1,71 @@
-# Signformer — Phoenix-2014T Setup
+# Signformer on PHOENIX-2014T
 
-## Cosa fa questo modello
-Transformer encoder-decoder molto leggero (0.57M–few M params) per Sign Language **Translation** (segni → testo tedesco).
-Feature input: I3D 1024-dim pre-estratte (non serve GPU potente per il preprocessing).
+The student branch: a lightweight Transformer encoder with a CTC gloss head, trained
+on precomputed I3D features for continuous sign language **recognition**.
 
-## Hardware consigliato
-**Gira in locale sul portatile RTX 4050 6GB** — il modello è minuscolo (1 layer encoder, 1 layer decoder, hidden=256).
-Batch 32 × T_max=400 × 1024 → ~500 MB VRAM. Con batch_size=16 stai sotto 3 GB.
+Because the visual features are frozen and precomputed, no large GPU is required.
+The model has 3.76 M parameters; at `batch_size: 32` with `T_max = 400` and 1024-d
+features it stays well under 3 GB of VRAM and trains on a laptop RTX 4050.
 
-## Step 1 — Installa dipendenze
+## 1. Dependencies
+
+Install the environment from the repository root with `uv sync`. One optimiser needs
+a manual step:
 
 ```bash
-pip install numpy portalocker PyYAML torch torchvision matplotlib seaborn
-# torchtext 0.5.0 è vecchissimo; usa la versione compatibile col tuo PyTorch:
-pip install torchtext==0.6.0   # per PyTorch 1.7–1.9
-# oppure per PyTorch 2.x:
-pip install torchtext          # versione recente
+pip install sophia-opt
 ```
 
-**Fix SophiaG optimizer** (richiesto dal config default):
-```bash
-pip install git+https://github.com/Liuhong99/Sophia.git
+Then delete the trailing `from sophia.sophia import SophiaG` line from that package's
+`__init__.py`, an upstream defect that makes the import fail. Alternatively set
+`optimizer: adam` in `configs/sign.yaml`; `main/builders.py` also falls back to Adam
+on its own when SophiaG cannot be imported.
+
+## 2. Data
+
+The raw features and the annotations are expected under `dataset/` at the repository
+root:
+
 ```
-Se vuoi evitarlo, cambia `optimizer: sophiag` → `optimizer: adam` in `configs/sign.yaml`.
+dataset/i3d_features_rwth phoenix 2014t/{train,val,test}/*.npy
+dataset/annotations/manual/PHOENIX-2014-T.{train,dev,test}.corpus.csv
+```
 
-## Step 2 — Prepara i dati
-
-Le i3d features e le annotations sono attese in `phoenix/dataset/`:
-- `phoenix/dataset/i3d_features_rwth phoenix 2014t/{train,val,test}/*.npy`
-- `phoenix/dataset/annotations/manual/PHOENIX-2014-T.{train,dev,test}.corpus.csv`
-
-Se i dati sono altrove, esporta `PHOENIX_ROOT` (o `PHOENIX_DATASET_ROOT`) prima di lanciare lo script.
+Set `PHOENIX_ROOT` or `PHOENIX_DATASET_ROOT` if your copy lives elsewhere, then:
 
 ```bash
-cd phoenix/code/signformer
 python prepare_phoenix_i3d.py
 ```
 
-Output atteso:
+Expected output:
+
 ```
-[train] 7096 samples written to data/PHOENIX2014T/phoenix14t.pami0.train
-[dev]   519 samples written to data/PHOENIX2014T/phoenix14t.pami0.dev
-[test]  642 samples written to data/PHOENIX2014T/phoenix14t.pami0.test
+[train] 7095 samples written to dataset/features/i3d_pami0/phoenix14t.pami0.train
+[dev]    519 samples written to dataset/features/i3d_pami0/phoenix14t.pami0.dev
+[test]   642 samples written to dataset/features/i3d_pami0/phoenix14t.pami0.test
 ```
 
-## Step 3 — Adatta il config
+`train` holds 7095 rather than 7096 sequences because one video in the CSV has no
+I3D feature; the script reports it. See [../../dataset/DATA.md](../../dataset/DATA.md)
+for the complete data layout and for the released checkpoints.
 
-`configs/sign.yaml` punta già a `./data/PHOENIX2014T/...` e `feature_size: 1024`.
-Opzionale: riduci `batch_size: 32` → `16` se hai poca VRAM.
+## 3. Train and evaluate
 
-## Step 4 — Avvia training
+`runner.ipynb` is the entry point. Its first cell decides where the run writes:
+output goes to `runs/<RUN_NAME>/`, never into `dataset/checkpoints/`.
+
+From the command line instead:
 
 ```bash
 python -m main train configs/sign.yaml
+python -m main test  configs/sign.yaml --ckpt ../../dataset/checkpoints/sign_sample/best.ckpt
 ```
 
-## Step 5 — Valuta
+## Expected numbers
 
-```bash
-python -m main test configs/sign.yaml --ckpt sign_sample/best.ckpt
-```
+The released baseline scores **39.54** dev WER with greedy decoding (beam 1), and
+**39.35** dev / **41.53** test WER at beam 4. Reproducing 39.54 at beam 1 is the
+quickest confirmation that the features, the vocabulary and the decoder all agree.
 
-## Metriche attese
-Il paper riporta risultati competitivi su Phoenix-2014T con modello minimo.
-Con I3D congelate aspettati BLEU4 ~20–25 (task SLT, non SLR puro).
+Translation metrics (BLEU, ROUGE, CHRF) print as `-1` throughout: this configuration
+performs recognition only, and the translation head is disabled.

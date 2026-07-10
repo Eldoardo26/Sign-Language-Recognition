@@ -271,29 +271,29 @@ def freeze_params(module: nn.Module):
 
 
 def symlink_update(target, link_name):
-    """Aggiorna il puntatore 'best.ckpt'.
+    """Update the 'best.ckpt' pointer.
 
-    Su Windows os.symlink richiede privilegi elevati (WinError 1314); in quel
-    caso ripieghiamo su una copia fisica del checkpoint. target è relativo alla
-    dir del link, quindi risolviamo il path assoluto per la copia.
+    On Windows os.symlink needs elevated privileges (WinError 1314); in that case
+    fall back to a physical copy of the checkpoint. `target` is relative to the
+    link's directory, so resolve it to an absolute path before copying.
     """
-    # rimuovi eventuale link/file preesistente (gestisce EEXIST in modo uniforme)
+    # Remove any pre-existing link or file, so EEXIST is handled uniformly.
     if os.path.islink(link_name) or os.path.exists(link_name):
         os.remove(link_name)
     try:
         os.symlink(target, link_name)
     except (OSError, NotImplementedError, AttributeError):
-        # symlink non permesso (es. Windows senza developer mode) → copia fisica
+        # Symlinks not permitted (e.g. Windows without developer mode): copy instead.
         src = os.path.join(os.path.dirname(link_name), target)
         shutil.copyfile(src, link_name)
 
 
 def parse_validations(model_dir: str):
-    """Legge {model_dir}/validations.txt e ne estrae le curve.
+    """Read {model_dir}/validations.txt and extract the training curves.
 
-    Ritorna un dict con liste parallele: steps, recognition_loss, wer, lr.
-    I valori pari a -1 (metrica non calcolata) vengono lasciati come NaN così
-    non sporcano i grafici.
+    Returns a dict of parallel lists: steps, recognition_loss, wer, lr.
+    A value of -1 means the metric was not computed; it is returned as NaN so it
+    does not distort the plots.
     """
     path = os.path.join(model_dir, "validations.txt")
     steps, rloss, wer, lr = [], [], [], []

@@ -192,9 +192,10 @@ def make_data_iter(
         gls_vocab       = dataset.gls_vocab,
         txt_vocab       = dataset.txt_vocab,
         pad_feature_size= dataset.pad_feature_size,
-        # NON pre-ordinare: Batch.sort_by_sgn_lengths() ordina internamente e
-        # restituisce il reverse-index. Pre-ordinare qui romperebbe l'allineamento
-        # hyp/ref in validate_on_data (data.gls è in ordine dataset) → WER errato.
+        # Do NOT pre-sort. Batch.sort_by_sgn_lengths() sorts internally and returns
+        # the reverse index; sorting here would break the hypothesis/reference
+        # alignment in validate_on_data, where data.gls follows dataset order.
+        # The WER would come out wrong, silently.
         sort_by_sgn     = False,
     )
 

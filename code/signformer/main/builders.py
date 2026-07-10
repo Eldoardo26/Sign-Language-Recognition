@@ -137,8 +137,8 @@ def build_optimizer(config: dict, parameters) -> Optimizer:
         )
     elif optimizer_name == "sophiag":
         if SophiaG is None:
-            # sophia non installato → fallback ad Adam
-            print("[builders] SophiaG non disponibile, uso Adam come fallback")
+            # sophia-opt is not installed: fall back to Adam.
+            print("[builders] SophiaG unavailable, falling back to Adam")
             return torch.optim.Adam(
                 parameters, weight_decay=weight_decay, lr=learning_rate, betas=betas
             )

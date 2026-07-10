@@ -47,11 +47,16 @@ margin of 0.30 WER fixed before looking at the data**.
 | Control (fine-tuning only, searches `lr`) | 6 | **38.86** | 38.92 | 39.07 |
 | FD-CMKD (feature-only, searches `lr`, `λ`, `w_high`) | 15 | **38.70** | 39.02 | 39.07 |
 
-Δ = **0.16 WER**, inside the margin. The notebook's own automatic verdict:
+Δ = **0.16 WER**, inside the margin. The notebook's own automatic verdict, quoted
+verbatim from its stored output:
 
 ```
 VERDETTO: distillazione NEUTRA vs controllo (delta +0.16 <= margine 0.3).
 ```
+
+*Distillation is NEUTRAL against the control: delta +0.16 is within the 0.30 margin.*
+The archived notebooks are kept in the language they ran in; see
+[_archive/README.md](_archive/README.md).
 
 Three reasons why even that 0.16 is not a real effect:
 

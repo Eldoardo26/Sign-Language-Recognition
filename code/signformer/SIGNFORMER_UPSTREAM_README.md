@@ -1,3 +1,7 @@
+> This is the upstream README of the Signformer project, kept verbatim for
+> attribution. It describes the original translation model, not the recognition
+> setup used here. For this repository, see the root README and SETUP_PHOENIX.md.
+
 <h1 align="center"> Official: Signformer is all you need: Towards Edge AI for Sign Language
 </h1>
 

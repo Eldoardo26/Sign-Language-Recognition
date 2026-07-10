@@ -64,11 +64,11 @@ class DistillTrainManager(TrainManager):
         )
 
     def _train_batch(self, batch, update: bool = True):
-        # senza distillazione: comportamento identico all'originale
+        # With distillation disabled, behave exactly like the base trainer.
         if not getattr(self, "do_distill", False):
             return super()._train_batch(batch, update=update)
 
-        # --- recognition (CTC) ricalcolata per riusare encoder_output ---
+        # Recognition (CTC) is recomputed here so that encoder_output can be reused.
         encoder_output, _ = self.model.encode(
             sgn=batch.sgn, sgn_mask=batch.sgn_mask, sgn_length=batch.sgn_lengths
         )
@@ -79,7 +79,7 @@ class DistillTrainManager(TrainManager):
         ) * self.recognition_loss_weight
         norm_rec = recognition_loss / self.batch_multiplier
 
-        # --- distillazione cross-modale FD-CMKD ---
+        # Cross-modal FD-CMKD term.
         distill = batch_distill_loss(
             encoder_output, batch.sgn_lengths, batch.sequence,
             self.teacher_feats, self.distill_proj,
