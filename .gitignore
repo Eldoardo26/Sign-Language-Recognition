@@ -54,3 +54,11 @@ code/distillation/_smoke_*.yaml
 
 # training output (never the published checkpoints)
 runs/
+
+# Stray training / Optuna trial directories (organised runs live in runs/)
+code/distillation/optuna_fd_*
+code/distillation/scratch_*
+code/distillation/warm_*
+code/signformer/optuna_trial_*
+code/signformer/sign_sample/
+dataset/features/transformer_feats/

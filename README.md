@@ -107,15 +107,35 @@ shape and motion should above all reduce **substitutions**. Substitutions went u
 │   │   ├── main/                  # shared framework, reused by the distillation modules
 │   │   └── runner.ipynb           # entry point
 │   └── distillation/
-│       ├── extract_skeleton_feats.py  # freeze the teacher, dump pre-classifier features
-│       ├── distill.py                 # Module 1: feature-only FD-CMKD
-│       ├── fd_cmkd.py                 # Module 2: full FD-CMKD + shared classifiers
-│       ├── vocab_utils.py             # shared-vocabulary merge policy
-│       └── run_feature_distill.ipynb  # entry point
+│       ├── extract_skeleton_feats.py     # skeleton teacher features (forward direction)
+│       ├── extract_transformer_feats.py  # Signformer teacher features (reverse direction)
+│       ├── distill.py / fd_cmkd.py        # Module 1 / Module 2 losses
+│       ├── fd_cmkd_trainer.py             # Signformer-student trainer (forward)
+│       ├── reverse_distill.py             # skeleton-student trainer (reverse)
+│       ├── vocab_utils.py                 # shared-vocabulary merge policy
+│       └── run_{forward,reverse}_{warm,scratch}_distill.ipynb   # the four experiments
 ├── distillation/optuna/   # the controlled study: ctrl_* vs dist_*
-├── _archive/              # the controlled-experiment notebook
+├── _archive/              # legacy notebooks, kept for provenance
 └── dataset/DATA.md        # how to rebuild the data and fetch the checkpoints
 ```
+
+### The four distillation notebooks
+
+Each experiment writes to its own `runs/<name>/` directory, so it is always clear
+which one produced a result. The direction says who teaches whom; the regime says how
+the student is initialised.
+
+| Notebook | Teacher → Student | Student init |
+|---|---|---|
+| `run_forward_warm_distill.ipynb` | skeleton → Signformer | warm-started from baseline |
+| `run_forward_scratch_distill.ipynb` | skeleton → Signformer | from scratch |
+| `run_reverse_warm_distill.ipynb` | Signformer → skeleton | warm-started from baseline |
+| `run_reverse_scratch_distill.ipynb` | Signformer → skeleton | from scratch |
+
+The forward direction is the thesis's original, weak-teacher setup. The reverse
+direction is conventional distillation — the stronger Signformer teaching the weaker
+skeleton model — and each reverse notebook also runs a matched no-teacher control, so
+its verdict is read against a control rather than against the baseline.
 
 > An earlier, more modular standalone version of the skeleton pipeline
 > (`decoding.py`, `ensemble.py`, `augmentation.py`, `metrics.py`) lives on the
@@ -231,10 +251,14 @@ For data and checkpoints, see **[dataset/DATA.md](dataset/DATA.md)**.
 
 ```bash
 jupyter notebook code/csrl_skeleton/runner.ipynb               # 1. teacher
-python code/distillation/extract_skeleton_feats.py             # 2. teacher features
-jupyter notebook code/signformer/runner.ipynb                  # 3. student baseline
-jupyter notebook code/distillation/run_feature_distill.ipynb   # 4. distillation
+jupyter notebook code/signformer/runner.ipynb                  # 2. student baseline
+python code/distillation/extract_skeleton_feats.py             # 3a. skeleton teacher features
+python code/distillation/extract_transformer_feats.py          # 3b. Signformer teacher features
+jupyter notebook code/distillation/run_forward_warm_distill.ipynb    # 4. any of the four
 ```
+
+Step 3a feeds the forward notebooks, 3b the reverse ones. Pick whichever of the four
+distillation notebooks you want in step 4; each is self-contained.
 
 `extract_skeleton_feats.py` honours `PHOENIX_ROOT`, `MSKA_DATA_DIR`, `TEACHER_CKPT` and
 `SKELETON_FEATS_DIR` if your data lives elsewhere. The distillation notebooks prepend

@@ -145,11 +145,9 @@ That link requires UniBA credentials, so the Releases remain the public route.
 
 ### Note on the FD-CMKD checkpoint
 
-It was saved under NumPy ≥ 2.0 (module `numpy._core`). The locked environment installs
-NumPy 2.0, so the checkpoint loads directly and nothing below applies.
-
-If instead you are on NumPy 1.x (`numpy.core`) — an older conda environment, say —
-`torch.load` fails with `ModuleNotFoundError: No module named 'numpy._core'`.
+It was saved under NumPy ≥ 2.0 (module `numpy._core`). If your environment has NumPy
+1.x (`numpy.core`), `torch.load` fails with
+`ModuleNotFoundError: No module named 'numpy._core'`.
 
 Do **not** alias `numpy._core` into `sys.modules`: it segfaults inside NumPy's C
 reconstruct path. Use an unpickler that renames the module instead:
