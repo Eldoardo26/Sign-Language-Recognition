@@ -22,13 +22,18 @@ and saved notebook outputs in this repository.
 
 | Model | Params | Dev WER | Test WER |
 |---|---:|---:|---:|
-| Teacher — skeleton, TSSI-75 + TCN/BiLSTM/CTC | 6.60 M | 47.81 | not evaluated |
+| Teacher — skeleton, TSSI-75 + TCN/BiLSTM/CTC | 6.60 M | 47.81 | 48.41 |
 | Student — Signformer on I3D, no distillation | 3.76 M | **39.54** | 41.53 |
 | Student + Module 2 (full FD-CMKD) | 3.76 M | 39.81 | 40.90 |
 
-The teacher is **1.76× larger than the student and 7.4 WER points worse.** This
+The teacher is **1.76× larger than the student and 6.9 test-WER points worse.** This
 inverts the usual distillation premise: there is no strong teacher here, only a
 *different* one.
+
+Teacher numbers are greedy decoding with prior correction (β = 0.324), checkpoint at
+epoch 74. Beam search makes the teacher *worse*, not better — 55.25 test WER at width
+25, against 48.41 greedy — and it does so by trading 299 deletions for 381 extra
+insertions. That is not a tuning artefact; see [Known issues](#known-issues).
 
 ### The controlled experiment
 
@@ -232,6 +237,29 @@ Module 2, from `code/distillation/active_fd_cmkd.yaml` (8 Optuna TPE trials over
 > `dataset/checkpoints/`. Launching a notebook therefore erases the checkpoint and the
 > `validations.txt` of the corresponding published run, without prompting. Point
 > `model_dir` somewhere else before you experiment.
+
+## Known issues
+
+### The teacher's beam search discards probability mass
+
+`csrl_skeleton/losses.py:77`, inside `beam_decode`:
+
+```python
+elif c == last:
+    continue          # the path is dropped, not merged into (pre, last)
+```
+
+In CTC a gloss is emitted over many consecutive frames, so *staying* on the current
+label is the common case. A prefix beam search must fold that path back into the
+existing prefix; here it is discarded. The only way a beam can stay put is through the
+blank, while emitting a *new* label is always available — which biases the decoder
+towards insertions. On test, beam(25) produces 447 insertions against greedy's 66.
+
+Related, `key = (pre, last)` on a blank never resets `last`, so the decoder can never
+emit the same gloss twice in a row. Empirically this costs little: only 5 of the 4264
+test glosses are adjacent repeats.
+
+The published teacher WERs use greedy decoding and are unaffected.
 
 ### What was verified
 

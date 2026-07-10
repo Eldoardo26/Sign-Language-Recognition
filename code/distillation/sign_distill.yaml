@@ -53,7 +53,7 @@ testing:
   - 4
   - 5
 training:
-  load_model: ../signformer/sign_sample/best.ckpt
+  load_model: ../../dataset/checkpoints/sign_sample/best.ckpt
   reset_best_ckpt: true
   reset_scheduler: true
   reset_optimizer: true
