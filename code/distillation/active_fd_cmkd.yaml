@@ -55,7 +55,7 @@ training:
   reset_scheduler: true
   reset_optimizer: true
   random_seed: 42
-  model_dir: ../../dataset/checkpoints/fd_cmkd
+  model_dir: ../../runs/fd_cmkd
   distillation:
     enabled: true
     teacher_feats_dir: ../../dataset/features/skeleton_feats
@@ -77,7 +77,7 @@ training:
   eval_recognition_beam_size: 1
   eval_translation_beam_size: 1
   eval_translation_beam_alpha: -1
-  overwrite: true
+  overwrite: false
   shuffle: true
   use_cuda: true
   translation_max_output_length: 30

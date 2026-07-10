@@ -53,7 +53,7 @@ training:
   reset_scheduler: false
   reset_optimizer: false
   random_seed: 42
-  model_dir: ./sign_sample
+  model_dir: ./runs/sign_baseline
   recognition_loss_weight: 1.0
   translation_loss_weight: 0.0
   eval_metric: wer
@@ -68,7 +68,7 @@ training:
   eval_recognition_beam_size: 1
   eval_translation_beam_size: 1
   eval_translation_beam_alpha: -1
-  overwrite: true
+  overwrite: false
   shuffle: true
   use_cuda: true
   translation_max_output_length: 30

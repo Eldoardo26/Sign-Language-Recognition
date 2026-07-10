@@ -51,3 +51,6 @@ Thumbs.db
 
 # smoke-test configs generated on the fly
 code/distillation/_smoke_*.yaml
+
+# training output (never the published checkpoints)
+runs/
