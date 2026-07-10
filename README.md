@@ -229,30 +229,6 @@ Module 2, from `code/distillation/active_fd_cmkd.yaml` (8 Optuna TPE trials over
 
 ---
 
-## Known issues
-
-### The baseline evaluation picks the wrong checkpoint
-
-`code/signformer/runner.ipynb`, final cell:
-
-```python
-ckpts = sorted(glob.glob(os.path.join(MODEL_DIR, "*.ckpt")))
-best_ckpt = ckpts[-1]     # BUG: alphabetical, not best
-```
-
-With `13200.ckpt`, `best.ckpt` and `resume.ckpt` on disk, `sorted()[-1]` returns
-**`resume.ckpt`** — the last periodic checkpoint, not the one selected on dev. It
-raises no error: it loads a valid model and prints plausible numbers that belong to the
-wrong checkpoint.
-
-Fix: `best_ckpt = os.path.join(MODEL_DIR, "best.ckpt")`.
-
-### The teacher was never evaluated on the test set
-
-Only dev WER exists (47.81, greedy with prior correction, β = 0.324, epoch 74). Training
-was still improving when it stopped on its epoch budget, so the teacher is
-under-trained. The negative result is conditional on **this** teacher; it is not a claim
-about skeleton teachers in general.
 
 ---
 
