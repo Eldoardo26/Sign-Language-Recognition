@@ -28,7 +28,7 @@ from scipy.ndimage import gaussian_filter1d
 #   SKELETON_FEATS_DIR : output folder for the extracted teacher features
 PHOENIX_ROOT = Path(os.environ.get('PHOENIX_ROOT', Path(__file__).resolve().parents[2]))
 DATA_DIR   = os.environ.get('MSKA_DATA_DIR',
-                            str(PHOENIX_ROOT / 'code' / 'csrl_skeleton' / 'data' / 'Phoenix-2014T'))
+                            str(PHOENIX_ROOT / 'dataset' / 'pose' / 'phoenix2014t_75kp'))
 CKPT_PATH  = os.environ.get('TEACHER_CKPT',
                             str(PHOENIX_ROOT / 'dataset' / 'checkpoints' / 'tssi75_cslr_best.pt'))
 OUT_DIR    = os.environ.get('SKELETON_FEATS_DIR',

@@ -13,6 +13,7 @@ student-to-teacher projection and the two shared classifiers, all appended to
 the student optimizer. Requires `import main.training` to resolve against
 code/signformer (added to sys.path by the notebook).
 """
+import itertools
 import os
 import shutil
 
@@ -112,7 +113,11 @@ class FDCMKDTrainManager(TrainManager):
         total.backward()
 
         if self.clip_grad_fun is not None:
-            self.clip_grad_fun(params=self.model.parameters())
+            # self.fd is stepped by the optimizer (added as a param group above),
+            # so it must be clipped too — otherwise the shared CTC classifiers
+            # take unbounded updates while the student stays clipped.
+            self.clip_grad_fun(
+                params=itertools.chain(self.model.parameters(), self.fd.parameters()))
         if update:
             self.optimizer.step()
             self.optimizer.zero_grad()

@@ -2,17 +2,23 @@
 Prepare Phoenix-2014T MediaPipe keypoints in the format expected by MSKA-SLR.
 
 Input:
-  - keypoints-kaggle/<split>/<vid>.pkl  →  dict with key "keypoints": ndarray (T, 75, 2)
+  - keypoints-kaggle/<split>/<vid>.pkl  →  dict with key "keypoints":
+      ndarray (T, 75, C) with C = 2 (x, y) or 3 (x, y, confidence)
       joints: 0-32 = body (MediaPipe Pose), 33-53 = left hand, 54-74 = right hand
   - Annotations CSV: name|video|start|end|speaker|orth|translation
 
 Output:
-  - data/Phoenix-2014T/Phoenix-2014T.{train,dev,test}
+  - dataset/pose/phoenix2014t_75kp/Phoenix-2014T.{train,dev,test}
     plain pickle, dict keyed by video name:
-      { name, gloss, num_frames, keypoint: FloatTensor(T, 75, 2), text }
+      { name, gloss, num_frames, keypoint: FloatTensor(T, 75, C), text }
 
-  - data/Phoenix-2014T/gloss2ids.pkl
+  - dataset/pose/phoenix2014t_75kp/gloss2ids.pkl
     dict {gloss_token: int_id}  (with <blank>=0, <unk>=1)
+
+The channel count is passed through unchanged. skeleton.generate_tssi_75 accepts
+both: with C = 2 it substitutes a constant confidence channel. The released
+teacher checkpoint was trained on C = 3, so 2-channel keypoints will train but
+will not reproduce the published WER.
 
 Usage:
   python prepare_phoenix_mediapipe.py
@@ -27,10 +33,16 @@ import pandas as pd
 from pathlib import Path
 
 # ── paths ────────────────────────────────────────────────────────────────────
-DATASET_ROOT = Path(r"C:\Users\edoar\Downloads\phoenix_dataset\PHOENIX-2014-T")
-KP_ROOT      = DATASET_ROOT / "keypoints-kaggle"
-ANN_ROOT     = DATASET_ROOT / "annotations" / "manual"
-OUT_DIR      = Path("data") / "Phoenix-2014T"
+# Repo layout: <root>/code/csrl_skeleton/prepare_phoenix_mediapipe.py
+# PHOENIX_RAW_ROOT must hold the downloaded keypoints; everything else defaults
+# inside the repo. The output lands where config.py and extract_skeleton_feats.py
+# both expect it (dataset/pose/phoenix2014t_75kp), so no copying is needed after.
+REPO_ROOT    = Path(os.environ.get("PHOENIX_ROOT", Path(__file__).resolve().parents[2]))
+DATASET_ROOT = Path(os.environ.get("PHOENIX_RAW_ROOT", REPO_ROOT / "dataset"))
+KP_ROOT      = Path(os.environ.get("PHOENIX_KEYPOINTS", DATASET_ROOT / "keypoints-kaggle"))
+ANN_ROOT     = REPO_ROOT / "dataset" / "annotations" / "manual"
+OUT_DIR      = Path(os.environ.get("MSKA_DATA_DIR",
+                                   REPO_ROOT / "dataset" / "pose" / "phoenix2014t_75kp"))
 
 SPLITS = {
     "train": ("train", "PHOENIX-2014-T.train.corpus.csv"),

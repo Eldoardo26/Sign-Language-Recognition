@@ -8,15 +8,46 @@ rebuild `dataset/` from scratch.
 
 ```
 dataset/
-├── i3d_features_rwth phoenix 2014t/   # raw .npy, (T, 1024) per video
-│   ├── train/  val/  test/
-├── annotations/manual/                # PHOENIX-2014-T.{train,dev,test}.corpus.csv
+├── i3d_features_rwth phoenix 2014t/   # raw .npy, (T, 1024) per video — download
+│   ├── train/ (7096)  val/ (519)  test/ (642)
+├── annotations/manual/                # PHOENIX-2014-T.{train,dev,test}.corpus.csv — download
+├── keypoints-kaggle/                  # raw MediaPipe keypoints per video — download
+├── pose/phoenix2014t_75kp/            # generated → teacher input
+│   ├── Phoenix-2014T.{train,dev,test}
+│   └── gloss2ids.pkl
 ├── features/
 │   ├── i3d_pami0/                     # generated → student input
-│   └── skeleton_feats/                # generated → teacher features
-├── pose/phoenix2014t_75kp/            # MediaPipe keypoints, 75 joints
+│   └── skeleton_feats/                # generated → distillation input
 └── checkpoints/                       # downloaded from the Releases
 ```
+
+Every path above is the default. `PHOENIX_ROOT`, `PHOENIX_DATASET_ROOT`,
+`PHOENIX_KEYPOINTS`, `MSKA_DATA_DIR`, `TEACHER_CKPT` and `SKELETON_FEATS_DIR`
+override the corresponding one if your data lives elsewhere.
+
+### Verify what you have
+
+```bash
+python - <<'EOF'
+import gzip, pickle
+D = "dataset"
+for s, n in [("train", 7095), ("dev", 519), ("test", 642)]:
+    with gzip.open(f"{D}/features/i3d_pami0/phoenix14t.pami0.{s}", "rb") as f:
+        got = len(pickle.load(f))
+    print(f"i3d  {s:5s} {got:5d}  {'ok' if got == n else f'EXPECTED {n}'}")
+for s, n in [("train", 7096), ("dev", 519), ("test", 642)]:
+    with open(f"{D}/pose/phoenix2014t_75kp/Phoenix-2014T.{s}", "rb") as f:
+        got = len(pickle.load(f))
+    print(f"pose {s:5s} {got:5d}  {'ok' if got == n else f'EXPECTED {n}'}")
+EOF
+```
+
+`i3d train` is 7095 and `pose train` is 7096 — one video in the CSV has no I3D
+feature. That difference is expected, not corruption.
+
+A truncated file raises `EOFError` or `UnpicklingError: pickle data was truncated`
+here. Sizes that are exact multiples of 0.25 MiB are a reliable symptom of an
+interrupted copy.
 
 ## 1. Original dataset
 
@@ -56,12 +87,25 @@ An `EOFError` means the file is truncated: delete it and regenerate.
 
 ## 3. MediaPipe keypoints — teacher input
 
+The keypoints are **not** extracted from the video frames by this repository: they
+are read from a pre-extracted per-video dump under `dataset/keypoints-kaggle/`,
+one pickle per video with a `"keypoints"` array of shape `(T, 75, C)`.
+
 ```bash
 python code/csrl_skeleton/prepare_phoenix_mediapipe.py
-# -> dataset/pose/phoenix2014t_75kp/
+# -> dataset/pose/phoenix2014t_75kp/Phoenix-2014T.{train,dev,test} + gloss2ids.pkl
 ```
 
 Joint layout: `0–32` body (MediaPipe Pose), `33–53` left hand, `54–74` right hand.
+
+`C` is 2 (x, y) or 3 (x, y, confidence) and is passed through unchanged.
+`skeleton.generate_tssi_75` accepts both, substituting a constant confidence
+channel when `C = 2`. **The released teacher checkpoint was trained on 3-channel
+keypoints**, so 2-channel input trains but will not reproduce the published WER.
+
+Note that `gloss2ids.pkl` (1118 entries) is written for MSKA compatibility and is
+*not* what the teacher trains on: `csrl_skeleton/vocab.py` rebuilds its own vocabulary
+from the three splits, applying the gloss-merge policy, and lands on 1022 classes.
 
 ## 4. Teacher features — distillation input
 

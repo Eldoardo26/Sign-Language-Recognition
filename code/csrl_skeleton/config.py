@@ -2,6 +2,8 @@
 
 import os
 import random
+from pathlib import Path
+
 import numpy as np
 import torch
 
@@ -20,8 +22,19 @@ torch.backends.cudnn.benchmark = True
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 AMP = torch.cuda.is_available()
 
-DATA_DIR = "/home/ebufi/phoenix_old/MSKA-SLR/data/Phoenix-2014T"
-CKPT_PATH = "tssi75_cslr_best.pt"
+# Repo layout: <root>/code/csrl_skeleton/config.py -> root is three levels up.
+# Override either path with an environment variable if your data lives elsewhere;
+# the names match the ones read by distillation/extract_skeleton_feats.py, so the
+# teacher and the feature exporter always agree on where the data is.
+REPO_ROOT = Path(__file__).resolve().parents[2]
+
+DATA_DIR = os.environ.get(
+    "MSKA_DATA_DIR", str(REPO_ROOT / "dataset" / "pose" / "phoenix2014t_75kp")
+)
+CKPT_PATH = os.environ.get(
+    "TEACHER_CKPT", str(REPO_ROOT / "dataset" / "checkpoints" / "tssi75_cslr_best.pt")
+)
+os.makedirs(os.path.dirname(CKPT_PATH), exist_ok=True)
 
 CFG = {
     "num_joints": 75,

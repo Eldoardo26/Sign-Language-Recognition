@@ -1,15 +1,21 @@
 # coding: utf-8
+import itertools
 import os
 import shutil
 import torch
 
-# Import assoluti partendo dalla root del progetto (Signformer/)
-# Assicurati che 'Signformer/' sia nel sys.path del tuo notebook
+# `main.*` resolves against code/signformer/, which the notebooks put on sys.path.
 import main.training as mt
 from main.training import TrainManager
-from distillation.distill import load_teacher_feats, DistillHead, batch_distill_loss
 
-# ... resto del tuo codice ...
+# Support both the flat layout (notebook adds this dir to sys.path) and the
+# package layout, exactly as fd_cmkd.py does.
+try:
+    from distill import load_teacher_feats, DistillHead, batch_distill_loss
+except ImportError:                      # pragma: no cover - package context
+    from .distill import load_teacher_feats, DistillHead, batch_distill_loss
+
+
 class DistillTrainManager(TrainManager):
     """Estende il TrainManager di Signformer aggiungendo la loss di distillazione al train step."""
 
@@ -83,7 +89,10 @@ class DistillTrainManager(TrainManager):
         total_loss.backward()
 
         if self.clip_grad_fun is not None:
-            self.clip_grad_fun(params=self.model.parameters())
+            # distill_proj is stepped by the optimizer (added as a param group
+            # above), so it must be clipped alongside the student.
+            self.clip_grad_fun(params=itertools.chain(
+                self.model.parameters(), self.distill_proj.parameters()))
         if update:
             self.optimizer.step()
             self.optimizer.zero_grad()
