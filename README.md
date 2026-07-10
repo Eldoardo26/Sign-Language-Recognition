@@ -189,8 +189,9 @@ student's optimiser.
 
 ## Setup
 
-Python 3.10, PyTorch 2.6, CUDA 12.4. Dependencies are managed with
-**[uv](https://github.com/astral-sh/uv)**.
+Python 3.10 to 3.12, PyTorch 2.6 on CUDA 12.4. Dependencies are managed with
+**[uv](https://github.com/astral-sh/uv)**; `pyproject.toml` lists the direct ones and
+`uv.lock` pins the rest.
 
 ```bash
 git clone https://github.com/Eldoardo26/Sign-Language-Recognition.git
@@ -198,15 +199,31 @@ cd Sign-Language-Recognition
 uv sync
 ```
 
-Then, for the Signformer branch:
+`requirements.txt` is exported from `uv.lock` for people who prefer pip. It carries an
+`--extra-index-url` line, because the pinned `torch==2.6.0+cu124` does not exist on
+PyPI. For a CPU-only install, swap `cu124` for `cpu` in that line.
+
+Two things are worth knowing before a training run.
+
+**TensorFlow is a hard dependency.** `main/model.py` calls
+`tf.nn.ctc_beam_search_decoder` for the beam search, and hides the GPU from TensorFlow
+at import, so it only ever runs on the CPU. `tensorflow-cpu` is a valid, much smaller
+substitute. TensorFlow 2.13, which the original environment used, caps
+`typing-extensions` below the version PyTorch 2.6 requires; the two cannot be resolved
+together, so the pin here is 2.18.
+
+**SophiaG is an optional extra, and its absence is silent.** The published results were
+trained with it. Without it, `main/builders.py` falls back to Adam and prints one line
+saying so, and the numbers will not reproduce.
 
 ```bash
-pip install sophia-opt   # then delete the trailing `from sophia.sophia import SophiaG`
-                         # line in its __init__.py (an upstream Signformer quirk)
+uv sync --extra sophia
 ```
 
-`requirements.txt` captures the environment used on the server but **does not list
-`torch`** — install it separately.
+then delete the trailing `from sophia.sophia import SophiaG` line from the installed
+package's `__init__.py`, an upstream defect that breaks the import. Setting
+`optimizer: adam` in `configs/sign.yaml` is the honest alternative if you do not need
+to match the reported figures.
 
 For data and checkpoints, see **[dataset/DATA.md](dataset/DATA.md)**.
 
