@@ -227,8 +227,24 @@ Module 2, from `code/distillation/active_fd_cmkd.yaml` (8 Optuna TPE trials over
 | optimiser | SophiaG, lr 8.18e-5, betas 0.95/0.998, wd 3e-3 |
 | batch size | 32 |
 
----
+> **Every training config sets `overwrite: true`.** `configs/sign.yaml` writes into
+> `code/signformer/sign_sample/`, `sign_distill.yaml` and `active_fd_cmkd.yaml` into
+> `dataset/checkpoints/`. Launching a notebook therefore erases the checkpoint and the
+> `validations.txt` of the corresponding published run, without prompting. Point
+> `model_dir` somewhere else before you experiment.
 
+### What was verified
+
+From a clean checkout, with the dataset rebuilt as described in
+[dataset/DATA.md](dataset/DATA.md):
+
+- the teacher loads `tssi75_cslr_best.pt` with `strict=True` and runs a forward pass
+  (6.59 M parameters, 1022 gloss classes);
+- `extract_skeleton_feats.py` exports 7096 / 519 / 642 teacher sequences;
+- the Signformer baseline reproduces **39.54** dev WER at beam 1, **39.35** at beam 4,
+  and **41.53** test WER with DEL 14.56 / INS 3.68 / SUB 23.29 — the error breakdown
+  reported above;
+- both distillation modules train, validate and checkpoint.
 
 ---
 

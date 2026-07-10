@@ -48,3 +48,6 @@ venv/
 Thumbs.db
 .vscode/
 .idea/
+
+# smoke-test configs generated on the fly
+code/distillation/_smoke_*.yaml

@@ -1,13 +1,16 @@
 name: sign_experiment
 data:
-  data_path: ./
+  # Same canonical feature location as signformer/configs/sign.yaml, so the
+  # baseline and the distilled run read byte-identical inputs.
+  # Relative to code/distillation/, the notebook's working directory.
+  data_path: ../../dataset/features/i3d_pami0/
   version: phoenix_2014_trans
   sgn: sign
   txt: text
   gls: gloss
-  train: ../../dataset/features/PHOENIX2014T/phoenix14t.pami0.train
-  dev: ../../dataset/features/PHOENIX2014T/phoenix14t.pami0.dev
-  test: ../../dataset/features/PHOENIX2014T/phoenix14t.pami0.test
+  train: phoenix14t.pami0.train
+  dev: phoenix14t.pami0.dev
+  test: phoenix14t.pami0.test
   feature_size: 1024
   level: word
   txt_lowercase: true
@@ -55,7 +58,7 @@ training:
   model_dir: ../../dataset/checkpoints/fd_cmkd
   distillation:
     enabled: true
-    teacher_feats_dir: ../../dataset/features/skeleton_feats/skeleton_feats
+    teacher_feats_dir: ../../dataset/features/skeleton_feats
     lambda_feat: 0.16071238512039876
     low_w: 1.0
     high_w: 0.29214464853521815
