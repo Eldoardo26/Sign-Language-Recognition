@@ -1,0 +1,157 @@
+P2 ep 5/27 | loss 4.314 | dev WER 94.21% | best 94.21%
+    P2 ep 6/27 | loss 4.143 | dev WER 92.56% | best 92.56%
+    P2 ep 7/27 | loss 3.950 | dev WER 89.09% | best 89.09%
+    P2 ep 8/27 | loss 3.760 | dev WER 86.21% | best 86.21%
+    P2 ep 9/27 | loss 3.590 | dev WER 79.14% | best 79.14%
+    P2 ep 10/27 | loss 3.444 | dev WER 80.44% | best 79.14%
+    P2 ep 11/27 | loss 3.293 | dev WER 76.60% | best 76.60%
+    P2 ep 12/27 | loss 3.156 | dev WER 71.50% | best 71.50%
+    P2 ep 13/27 | loss 3.034 | dev WER 68.97% | best 68.97%
+    P2 ep 14/27 | loss 2.907 | dev WER 67.61% | best 67.61%
+    P2 ep 15/27 | loss 2.790 | dev WER 63.66% | best 63.66%
+    P2 ep 16/27 | loss 2.681 | dev WER 61.58% | best 61.58%
+    P2 ep 17/27 | loss 2.571 | dev WER 60.01% | best 60.01%
+    P2 ep 18/27 | loss 2.468 | dev WER 60.35% | best 60.01%
+    P2 ep 19/27 | loss 2.382 | dev WER 57.63% | best 57.63%
+    P2 ep 20/27 | loss 2.298 | dev WER 56.91% | best 56.91%
+    P2 ep 21/27 | loss 2.227 | dev WER 56.99% | best 56.91%
+    P2 ep 22/27 | loss 2.165 | dev WER 55.42% | best 55.42%
+    P2 ep 23/27 | loss 2.117 | dev WER 54.59% | best 54.59%
+    P2 ep 24/27 | loss 2.076 | dev WER 54.72% | best 54.59%
+    P2 ep 25/27 | loss 2.044 | dev WER 54.40% | best 54.40%
+    P2 ep 26/27 | loss 2.030 | dev WER 54.54% | best 54.40%
+    P2 ep 27/27 | loss 2.026 | dev WER 54.51% | best 54.40%
+  => Trial 1 done | best dev WER = 54.40% | 5805s | SAVED
+
+--- Trial 2/4 ---
+  phase1_lr      = 0.000072
+  phase2_lr_head = 0.000138
+  phase2_lr_back = 0.000069
+  dropout        = 0.2145
+  weight_decay   = 0.000540
+  backbone frozen — trainable: 4,864,510
+    P1 ep 1/3 | loss 26.066 | dev WER 100.00% | best 100.00%
+    P1 ep 2/3 | loss 5.458 | dev WER 100.00% | best 100.00%
+    P1 ep 3/3 | loss 5.333 | dev WER 100.00% | best 100.00%
+  backbone unfrozen — trainable: 6,593,278
+    P2 ep 1/27 | loss 5.214 | dev WER 99.84% | best 99.84%
+    P2 ep 2/27 | loss 5.063 | dev WER 99.28% | best 99.28%
+    P2 ep 3/27 | loss 4.900 | dev WER 98.40% | best 98.40%
+    P2 ep 4/27 | loss 4.729 | dev WER 96.61% | best 96.61%
+    P2 ep 5/27 | loss 4.556 | dev WER 96.37% | best 96.37%
+    P2 ep 6/27 | loss 4.380 | dev WER 95.01% | best 95.01%
+    P2 ep 7/27 | loss 4.211 | dev WER 94.10% | best 94.10%
+    P2 ep 8/27 | loss 4.064 | dev WER 92.90% | best 92.90%
+    P2 ep 9/27 | loss 3.915 | dev WER 92.02% | best 92.02%
+    P2 ep 10/27 | loss 3.790 | dev WER 92.08% | best 92.02%
+    P2 ep 11/27 | loss 3.666 | dev WER 91.17% | best 91.17%
+    P2 ep 12/27 | loss 3.557 | dev WER 90.88% | best 90.88%
+    P2 ep 13/27 | loss 3.449 | dev WER 88.45% | best 88.45%
+    P2 ep 14/27 | loss 3.343 | dev WER 87.83% | best 87.83%
+    P2 ep 15/27 | loss 3.250 | dev WER 85.30% | best 85.30%
+    P2 ep 16/27 | loss 3.168 | dev WER 85.14% | best 85.14%
+    P2 ep 17/27 | loss 3.085 | dev WER 83.11% | best 83.11%
+    P2 ep 18/27 | loss 3.017 | dev WER 81.30% | best 81.30%
+    P2 ep 19/27 | loss 2.953 | dev WER 80.90% | best 80.90%
+    P2 ep 20/27 | loss 2.895 | dev WER 79.64% | best 79.64%
+    P2 ep 21/27 | loss 2.848 | dev WER 78.60% | best 78.60%
+    P2 ep 22/27 | loss 2.808 | dev WER 77.83% | best 77.83%
+    P2 ep 23/27 | loss 2.777 | dev WER 77.27% | best 77.27%
+    P2 ep 24/27 | loss 2.749 | dev WER 77.24% | best 77.24%
+    P2 ep 25/27 | loss 2.740 | dev WER 76.87% | best 76.87%
+    P2 ep 26/27 | loss 2.727 | dev WER 76.97% | best 76.87%
+    P2 ep 27/27 | loss 2.720 | dev WER 76.95% | best 76.87%
+  => Trial 2 done | best dev WER = 76.87% | 5727s | SAVED
+
+--- Trial 3/4 ---
+  phase1_lr      = 0.000200
+  phase2_lr_head = 0.000436
+  phase2_lr_back = 0.000218
+  dropout        = 0.2051
+  weight_decay   = 0.000871
+  backbone frozen — trainable: 4,864,510
+    P1 ep 1/3 | loss 12.717 | dev WER 100.00% | best 100.00%
+    P1 ep 2/3 | loss 5.316 | dev WER 100.00% | best 100.00%
+    P1 ep 3/3 | loss 5.154 | dev WER 99.63% | best 99.63%
+  backbone unfrozen — trainable: 6,593,278
+    P2 ep 1/27 | loss 4.978 | dev WER 99.25% | best 99.25%
+    P2 ep 2/27 | loss 4.782 | dev WER 96.88% | best 96.88%
+    P2 ep 3/27 | loss 4.580 | dev WER 96.13% | best 96.13%
+    P2 ep 4/27 | loss 4.393 | dev WER 95.25% | best 95.25%
+    P2 ep 5/27 | loss 4.206 | dev WER 93.41% | best 93.41%
+    P2 ep 6/27 | loss 4.003 | dev WER 92.90% | best 92.90%
+    P2 ep 7/27 | loss 3.769 | dev WER 86.23% | best 86.23%
+    P2 ep 8/27 | loss 3.559 | dev WER 81.56% | best 81.56%
+    P2 ep 9/27 | loss 3.367 | dev WER 74.76% | best 74.76%
+    P2 ep 10/27 | loss 3.180 | dev WER 73.61% | best 73.61%
+    P2 ep 11/27 | loss 3.023 | dev WER 69.45% | best 69.45%
+    P2 ep 12/27 | loss 2.870 | dev WER 64.27% | best 64.27%
+    P2 ep 13/27 | loss 2.727 | dev WER 63.15% | best 63.15%
+    P2 ep 14/27 | loss 2.588 | dev WER 61.45% | best 61.45%
+    P2 ep 15/27 | loss 2.470 | dev WER 60.43% | best 60.43%
+    P2 ep 16/27 | loss 2.352 | dev WER 57.92% | best 57.92%
+    P2 ep 17/27 | loss 2.236 | dev WER 57.79% | best 57.79%
+    P2 ep 18/27 | loss 2.134 | dev WER 55.04% | best 55.04%
+    P2 ep 19/27 | loss 2.029 | dev WER 54.51% | best 54.51%
+    P2 ep 20/27 | loss 1.949 | dev WER 54.35% | best 54.35%
+    P2 ep 21/27 | loss 1.882 | dev WER 53.55% | best 53.55%
+    P2 ep 22/27 | loss 1.812 | dev WER 53.12% | best 53.12%
+    P2 ep 23/27 | loss 1.770 | dev WER 53.31% | best 53.12%
+    P2 ep 24/27 | loss 1.733 | dev WER 52.37% | best 52.37%
+    P2 ep 25/27 | loss 1.708 | dev WER 52.51% | best 52.37%
+    P2 ep 26/27 | loss 1.691 | dev WER 52.37% | best 52.37%
+    P2 ep 27/27 | loss 1.688 | dev WER 51.95% | best 51.95%
+  => Trial 3 done | best dev WER = 51.95% | 5717s | SAVED
+
+--- Trial 4/4 ---
+  phase1_lr      = 0.000340
+  phase2_lr_head = 0.000156
+  phase2_lr_back = 0.000078
+  dropout        = 0.2455
+  weight_decay   = 0.000023
+  backbone frozen — trainable: 4,864,510
+    P1 ep 1/3 | loss 10.461 | dev WER 100.00% | best 100.00%
+    P1 ep 2/3 | loss 5.252 | dev WER 99.71% | best 99.71%
+    P1 ep 3/3 | loss 5.056 | dev WER 98.85% | best 98.85%
+  backbone unfrozen — trainable: 6,593,278
+    P2 ep 1/27 | loss 4.866 | dev WER 98.88% | best 98.85%
+    P2 ep 2/27 | loss 4.771 | dev WER 96.61% | best 96.61%
+    P2 ep 3/27 | loss 4.654 | dev WER 95.65% | best 95.65%
+    P2 ep 4/27 | loss 4.525 | dev WER 95.49% | best 95.49%
+    P2 ep 5/27 | loss 4.381 | dev WER 95.97% | best 95.49%
+    P2 ep 6/27 | loss 4.223 | dev WER 94.24% | best 94.24%
+    P2 ep 7/27 | loss 4.051 | dev WER 92.29% | best 92.29%
+    P2 ep 8/27 | loss 3.900 | dev WER 92.50% | best 92.29%
+    P2 ep 9/27 | loss 3.758 | dev WER 90.96% | best 90.96%
+    P2 ep 10/27 | loss 3.634 | dev WER 89.78% | best 89.78%
+    P2 ep 11/27 | loss 3.511 | dev WER 87.27% | best 87.27%
+    P2 ep 12/27 | loss 3.395 | dev WER 84.42% | best 84.42%
+    P2 ep 13/27 | loss 3.283 | dev WER 82.52% | best 82.52%
+    P2 ep 14/27 | loss 3.184 | dev WER 80.58% | best 80.58%
+    P2 ep 15/27 | loss 3.091 | dev WER 79.40% | best 79.40%
+    P2 ep 16/27 | loss 2.998 | dev WER 77.48% | best 77.48%
+    P2 ep 17/27 | loss 2.924 | dev WER 76.17% | best 76.17%
+    P2 ep 18/27 | loss 2.852 | dev WER 74.79% | best 74.79%
+    P2 ep 19/27 | loss 2.787 | dev WER 72.15% | best 72.15%
+    P2 ep 20/27 | loss 2.740 | dev WER 71.58% | best 71.58%
+    P2 ep 21/27 | loss 2.691 | dev WER 69.00% | best 69.00%
+    P2 ep 22/27 | loss 2.652 | dev WER 69.29% | best 69.00%
+    P2 ep 23/27 | loss 2.617 | dev WER 68.30% | best 68.30%
+    P2 ep 24/27 | loss 2.596 | dev WER 67.72% | best 67.72%
+    P2 ep 25/27 | loss 2.576 | dev WER 67.96% | best 67.72%
+    P2 ep 26/27 | loss 2.571 | dev WER 67.80% | best 67.72%
+    P2 ep 27/27 | loss 2.563 | dev WER 68.04% | best 67.72%
+  => Trial 4 done | best dev WER = 67.72% | 5730s | SAVED
+
+======================================================================
+[Optuna] SEARCH COMPLETE — summary:
+  #    WER%      p1_lr    p2_lr_h    drop         wd   time
+----------------------------------------------------------------------
+  3   51.95   0.000200   0.000436  0.2051   0.000871  5717s
+  1   54.40   0.000118   0.000722  0.3830   0.000158  5805s
+  4   67.72   0.000340   0.000156  0.2455   0.000023  5730s
+  2   76.87   0.000072   0.000138  0.2145   0.000540  5727s
+
+best dev WER : 51.95%
+best params  : {'phase1_lr': 0.00019956529392808388, 'phase2_lr_head': 0.0004359666365651397, 'dropout': 0.20514612357395062, 'weight_decay': 0.0008706020878304854}
+CFG updated with Optuna best.

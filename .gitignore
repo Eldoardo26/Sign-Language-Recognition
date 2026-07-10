@@ -1,0 +1,50 @@
+# Nota: git non puo' re-includere un file se una cartella genitore e' esclusa.
+# Per questo NON escludiamo le cartelle dei trial Optuna, ma solo il loro
+# contenuto pesante. Cosi' i validations.txt — che sono i risultati
+# sperimentali — restano tracciati.
+
+# ── Dati e feature derivate (non ridistribuibili, multi-GB) ──────────────────
+dataset/features/
+dataset/pose/
+dataset/tssi_cache/
+dataset/annotations/
+dataset/i3d_features_rwth*/
+dataset/checkpoints/
+
+# La copia integra delle feature vive qui (1.8 GB): mai committarla.
+code/signformer/data/
+code/csrl_skeleton/data/
+phoenix14t.pami0.*
+Phoenix-2014T.*
+base_annotations/
+
+# Log di training verbosi
+*.log
+
+# ── Checkpoint (pubblicati come GitHub Release, vedi dataset/DATA.md) ────────
+*.ckpt
+*.pt
+*.pth
+
+# ── Artefatti di training ───────────────────────────────────────────────────
+**/tensorboard/
+events.out.tfevents.*
+**/gls/
+*.hyp.gls
+*_results.pkl
+training_curves.png
+*.png.tmp
+
+# ── Python ──────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.egg-info/
+.ipynb_checkpoints/
+.venv/
+venv/
+
+# ── OS / editor ─────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

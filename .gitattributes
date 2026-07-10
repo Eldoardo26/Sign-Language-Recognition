@@ -1,0 +1,14 @@
+# Normalise line endings: the repo stores LF, so a clone on the Linux server
+# does not arrive with CRLF (which breaks shebangs and produces noisy diffs).
+* text=auto eol=lf
+
+# Binary assets: never touch them.
+*.png binary
+*.jpg binary
+*.pt  binary
+*.pth binary
+*.ckpt binary
+*.pkl binary
+
+# Notebooks: keep LF, but don't try to merge them line-by-line.
+*.ipynb text eol=lf -merge

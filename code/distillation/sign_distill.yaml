@@ -1,0 +1,136 @@
+# Paths are RELATIVE to code/distillation/ (the working dir set by
+# run_feature_distill.ipynb, which also overrides them at runtime). Adjust them
+# if you launch train_fd_cmkd on this YAML directly from another directory.
+name: sign_experiment
+data:
+  # data_path is joined with train/dev/test by main.data.load_data.
+  # Relative to code/distillation/ (the notebook's cwd); the notebook also
+  # overrides these at runtime.
+  data_path: ../../dataset/features/i3d_pami0/
+  version: phoenix_2014_trans
+  sgn: sign
+  txt: text
+  gls: gloss
+  train: phoenix14t.pami0.train
+  dev: phoenix14t.pami0.dev
+  test: phoenix14t.pami0.test
+  feature_size: 1024
+  level: word
+  txt_lowercase: true
+  max_sent_length: 400
+  random_train_subset: -1
+  random_dev_subset: -1
+  multimodal: 0.0
+testing:
+  recognition_beam_sizes:
+  - 1
+  - 2
+  - 3
+  - 4
+  - 5
+  - 6
+  - 7
+  - 8
+  - 9
+  - 10
+  translation_beam_sizes:
+  - 1
+  - 2
+  - 3
+  - 4
+  - 5
+  - 6
+  - 7
+  - 8
+  - 9
+  - 10
+  translation_beam_alphas:
+  - -1
+  - 0
+  - 1
+  - 2
+  - 3
+  - 4
+  - 5
+training:
+  load_model: ../signformer/sign_sample/best.ckpt
+  reset_best_ckpt: true
+  reset_scheduler: true
+  reset_optimizer: true
+  random_seed: 42
+  model_dir: ../../dataset/checkpoints/sign_distill
+  distillation:
+    enabled: true
+    teacher_feats_dir: ../../dataset/features/skeleton_feats
+    lambda: 1.0
+    low_w: 1.0
+    high_w: 1.0
+  recognition_loss_weight: 1.0
+  translation_loss_weight: 0.0
+  eval_metric: wer
+  optimizer: sophiag
+  learning_rate: 0.0004
+  batch_size: 32
+  num_valid_log: 6
+  epochs: 1000
+  early_stopping_metric: eval_metric
+  batch_type: sentence
+  translation_normalization: batch
+  eval_recognition_beam_size: 1
+  eval_translation_beam_size: 1
+  eval_translation_beam_alpha: -1
+  overwrite: true
+  shuffle: true
+  use_cuda: true
+  translation_max_output_length: 30
+  keep_last_ckpts: 1
+  batch_multiplier: 1
+  logging_freq: 100
+  validation_freq: 100
+  betas:
+  - 0.95
+  - 0.998
+  scheduling: plateau
+  learning_rate_min: 1.0e-06
+  weight_decay: 0.003
+  patience: 10
+  early_stopping_patience: 10
+  decrease_factor: 0.8
+  label_smoothing: 0.1
+  lr_s_dim_model: 256
+  warmup_step: 1000
+  K: 2
+model:
+  initializer: xavier
+  bias_initializer: zeros
+  init_gain: 1.0
+  embed_initializer: xavier
+  embed_init_gain: 1.0
+  tied_softmax: false
+  cope: false
+  encoder:
+    type: transformer
+    num_layers: 3
+    num_heads: 8
+    embeddings:
+      embedding_dim: 256
+      scale: false
+      dropout: 0.2
+      norm_type: batch
+      activation_type: softsign
+    hidden_size: 256
+    ff_size: 1024
+    dropout: 0.2
+  decoder:
+    type: transformer
+    num_layers: 1
+    num_heads: 8
+    embeddings:
+      embedding_dim: 256
+      scale: false
+      dropout: 0.1
+      norm_type: batch
+      activation_type: softsign
+    hidden_size: 256
+    ff_size: 1024
+    dropout: 0.1
