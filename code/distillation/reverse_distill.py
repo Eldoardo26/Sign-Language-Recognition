@@ -9,18 +9,21 @@ distillation setup a strong model teaching a weaker one, which the thesis identi
 as the experiment its forward, weak-teacher result leaves untested.
 
 The module is self-contained: it reuses the skeleton building blocks (model, dataset,
-vocabulary, evaluation) and the feature-only FD-CMKD loss from distill.py, but runs
-its own single-phase training loop and touches none of the existing files. It uses a
+vocabulary, evaluation, and the exact two-phase schedule) and the feature-only
+FD-CMKD loss from distill.py, but touches none of the existing files. It uses a
 forward hook to read the student's pre-classifier feature, and interpolates the
 teacher's stored features onto the student's temporal length.
 
 Teacher features come from extract_transformer_feats.py
 (dataset/features/transformer_feats/{train,dev,test}.pkl, dim 256).
 
-Note on fairness: this loop is single-phase, not the two-phase schedule that produced
-the 47.81 baseline. So the reverse baseline for comparison must be trained by the same
-loop with `enabled=False` (a distillation weight of zero), which train_reverse does
-when asked. Compare the two arms this loop produces, not against 47.81 directly.
+The training schedule is the CSRL baseline's, reused here so the reverse student
+follows the same recipe that produced 47.81: phase 1 freezes the backbone and trains
+the head (and the distillation projection) for `phase1_epochs`; phase 2 unfreezes
+everything with differential learning rates for the remaining epochs. The freeze /
+optimizer / scheduler helpers are imported from csrl_skeleton.training; only the
+per-epoch inner loop is reimplemented here, to carry video names and add the
+distillation term. Run the matched control arm (`enabled=False`) for the verdict.
 """
 import os
 import sys
@@ -42,7 +45,9 @@ from model import PoseNetworkCTC                # noqa: E402
 from vocab import build_vocab_from_raw          # noqa: E402
 from dataset import load_pkl, TSSIDataset, collate_ctc  # noqa: E402
 from losses import CTCLossWithEntropy           # noqa: E402
-from training import evaluate as skel_evaluate  # noqa: E402
+from training import (                          # noqa: E402
+    evaluate as skel_evaluate, freeze_backbone, unfreeze_backbone,
+    make_opt_phase1, make_opt_phase2, make_sched)
 from distill import load_teacher_feats, DistillHead, batch_distill_loss  # noqa: E402
 
 REPO_ROOT = _HERE.parent.parent
@@ -100,14 +105,15 @@ def train_reverse(run_dir,
                   high_w=0.25,
                   distill_warmup_steps=500,
                   epochs=None,
-                  lr=None,
+                  phase1_epochs=None,
                   subset=None,
                   seed=42):
     """Train the skeleton student, optionally distilling from the Signformer teacher.
 
-    Returns (best_dev_wer, best_ckpt_path). Set enabled=False for the matched
-    control arm (identical loop, no teacher). Both arms must use the same settings
-    for the comparison to be fair.
+    Uses the CSRL baseline's two-phase schedule: phase 1 freezes the backbone and
+    trains the head (and the distillation projection); phase 2 unfreezes everything
+    with differential learning rates. Returns (best_dev_wer, best_ckpt_path). Set
+    enabled=False for the matched control arm (identical schedule, no teacher).
     """
     torch.manual_seed(seed)
     np.random.seed(seed)
@@ -118,7 +124,9 @@ def train_reverse(run_dir,
     teacher_feats_dir = teacher_feats_dir or str(
         REPO_ROOT / "dataset" / "features" / "transformer_feats")
     epochs = int(epochs if epochs is not None else cfg["num_epochs"])
-    lr = float(lr if lr is not None else cfg["phase2_lr_backbone"])
+    p1_epochs = int(phase1_epochs if phase1_epochs is not None else cfg["phase1_epochs"])
+    p1_epochs = min(p1_epochs, epochs)
+    p2_epochs = max(epochs - p1_epochs, 0)
     bs = cfg["batch_size"]
     max_frames = cfg["max_frames"]
 
@@ -175,17 +183,21 @@ def train_reverse(run_dir,
     handle = model.norm.register_forward_hook(
         lambda m, i, o: captured.__setitem__("feat", o))
 
-    params = list(model.parameters()) + (list(proj.parameters()) if proj else [])
-    opt = torch.optim.AdamW(params, lr=lr, weight_decay=cfg["weight_decay"])
     criterion = CTCLossWithEntropy(blank=0,
                                    entropy_weight=cfg["ctc_smoothing"]).to(DEVICE)
     scaler = torch.amp.GradScaler("cuda", enabled=torch.cuda.is_available())
+    tag = "distill" if enabled else "control"
 
-    best_wer, best_path = 1e9, os.path.join(run_dir, "best.pt")
-    steps = 0
-    for ep in range(epochs):
+    # Mutable across the closures below (assigned in the phase loops).
+    state = {"steps": 0}
+
+    def _run_epoch(opt, sched):
+        """One training epoch: CTC (0.7 main + 0.3 aux) plus, if enabled, the
+        FD-CMKD feature loss. Returns the average batch loss."""
         model.train()
-        ep_loss, ep_batches = 0.0, 0
+        tot, nbatch = 0.0, 0
+        trainable = ([p for p in model.parameters() if p.requires_grad]
+                     + (list(proj.parameters()) if proj is not None else []))
         for x, tg, il, tl, names in train_loader:
             x = x.to(DEVICE)
             opt.zero_grad(set_to_none=True)
@@ -197,38 +209,77 @@ def train_reverse(run_dir,
                 loss = (0.7 * criterion(lp, tg, il2, tl)
                         + 0.3 * criterion(aux.permute(1, 0, 2).float(), tg, il2, tl))
             if enabled:
-                # The FD-CMKD loss uses a real FFT, which is unreliable under AMP,
-                # so compute it in float32 outside the autocast block. The feature
-                # was captured by the hook during the forward pass above.
+                # FD-CMKD uses a real FFT, unreliable under AMP; compute in float32
+                # outside autocast. The feature was captured by the hook above.
                 ramp = (1.0 if distill_warmup_steps <= 0
-                        else min(1.0, steps / distill_warmup_steps))
+                        else min(1.0, state["steps"] / distill_warmup_steps))
                 dloss = batch_distill_loss(
                     captured["feat"].float(), il, names, teacher_feats, proj,
                     low_w=low_w, high_w=high_w)
                 loss = loss + ramp * lambda_feat * dloss
             scaler.scale(loss).backward()
             scaler.unscale_(opt)
-            nn.utils.clip_grad_norm_(params, cfg["grad_clip"])
-            scaler.step(opt)
-            scaler.update()
-            steps += 1
-            ep_loss += float(loss.item()); ep_batches += 1
+            nn.utils.clip_grad_norm_(trainable, cfg["grad_clip"])
+            scaler.step(opt); scaler.update(); sched.step()
+            state["steps"] += 1
+            tot += float(loss.item()); nbatch += 1
+        return tot / max(nbatch, 1)
 
-        train_loss = ep_loss / max(ep_batches, 1)
-        # Passing the criterion makes evaluate return the dev CTC loss too.
+    def _validate_and_log(ep_global, train_loss):
         wer, det, val_loss = skel_evaluate(model, dev_loader, cfg, DEVICE,
                                            log_prior, criterion=criterion)
-        tag = "distill" if enabled else "control"
-        print(f"[{tag}] epoch {ep + 1}/{epochs} | train loss {train_loss:.3f} | "
+        print(f"[{tag}] epoch {ep_global} | train loss {train_loss:.3f} | "
               f"val loss {val_loss:.3f} | dev WER {wer * 100:.2f}%")
         with open(os.path.join(run_dir, "validations.txt"), "a") as f:
-            f.write(f"epoch {ep + 1} Steps: {steps} trainloss {train_loss:.4f} "
-                    f"valloss {val_loss:.4f} WER {wer * 100:.2f}\n")
+            f.write(f"epoch {ep_global} Steps: {state['steps']} trainloss "
+                    f"{train_loss:.4f} valloss {val_loss:.4f} WER {wer * 100:.2f}\n")
+        return wer
+
+    best_wer, best_path = 1e9, os.path.join(run_dir, "best.pt")
+    ep_global, patience = 0, 0
+
+    # ---- Phase 1: frozen backbone, head (+ distillation projection) only ----
+    freeze_backbone(model)
+    opt1 = make_opt_phase1(model, cfg["phase1_lr"], cfg["weight_decay"])
+    if proj is not None:
+        opt1.add_param_group({"params": list(proj.parameters()), "lr": cfg["phase1_lr"]})
+    sch1 = make_sched(opt1, max(p1_epochs, 1), len(train_loader))
+    print(f"[{tag}] PHASE 1: {p1_epochs} epochs, frozen backbone")
+    for _ in range(p1_epochs):
+        ep_global += 1
+        tl_ = _run_epoch(opt1, sch1)
+        wer = _validate_and_log(ep_global, tl_)
         if wer < best_wer:
             best_wer = wer
-            torch.save({"epoch": ep + 1, "model": model.state_dict(),
+            torch.save({"epoch": ep_global, "model": model.state_dict(),
                         "wer": wer}, best_path)
 
+    # ---- Phase 2: unfrozen, differential learning rates ----
+    unfreeze_backbone(model)
+    opt2 = make_opt_phase2(model, cfg["phase2_lr_backbone"],
+                           cfg["phase2_lr_head"], cfg["weight_decay"])
+    if proj is not None:
+        opt2.add_param_group({"params": list(proj.parameters()),
+                              "lr": cfg["phase2_lr_head"]})
+    sch2 = make_sched(opt2, max(p2_epochs, 1), len(train_loader))
+    print(f"[{tag}] PHASE 2: {p2_epochs} epochs, unfrozen + differential LR")
+    for _ in range(p2_epochs):
+        ep_global += 1
+        tl_ = _run_epoch(opt2, sch2)
+        wer = _validate_and_log(ep_global, tl_)
+        if wer < best_wer:
+            best_wer, patience = wer, 0
+            torch.save({"epoch": ep_global, "model": model.state_dict(),
+                        "wer": wer}, best_path)
+        else:
+            patience += 1
+            if patience >= cfg["early_stopping_patience"]:
+                print(f"[{tag}] early stopping at epoch {ep_global}")
+                break
+
     handle.remove()
-    print(f"best dev WER {best_wer * 100:.2f}% -> {best_path}")
+    if not os.path.exists(best_path):   # phase 2 empty (tiny smoke run): save final
+        torch.save({"epoch": ep_global, "model": model.state_dict(),
+                    "wer": best_wer}, best_path)
+    print(f"[{tag}] best dev WER {best_wer * 100:.2f}% -> {best_path}")
     return best_wer * 100, best_path
