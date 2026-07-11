@@ -107,13 +107,20 @@ def train_reverse(run_dir,
                   epochs=None,
                   phase1_epochs=None,
                   subset=None,
-                  seed=42):
+                  seed=42,
+                  fresh_start=True,
+                  save_every=5):
     """Train the skeleton student, optionally distilling from the Signformer teacher.
 
     Uses the CSRL baseline's two-phase schedule: phase 1 freezes the backbone and
     trains the head (and the distillation projection); phase 2 unfreezes everything
     with differential learning rates. Returns (best_dev_wer, best_ckpt_path). Set
     enabled=False for the matched control arm (identical schedule, no teacher).
+
+    Checkpointing: best.pt holds the best-on-dev weights; resume.pt is written every
+    `save_every` epochs and at each phase boundary. With fresh_start=False, an
+    existing resume.pt is loaded and training continues from the epoch after it --
+    so an interrupted run picks up where it left off instead of restarting.
     """
     torch.manual_seed(seed)
     np.random.seed(seed)
@@ -236,23 +243,57 @@ def train_reverse(run_dir,
         return wer
 
     best_wer, best_path = 1e9, os.path.join(run_dir, "best.pt")
+    resume_path = os.path.join(run_dir, "resume.pt")
     ep_global, patience = 0, 0
+    start_p1, start_p2 = 0, 0
+
+    def _save_resume(phase, epoch_in_phase):
+        torch.save({"phase": phase, "epoch_in_phase": epoch_in_phase,
+                    "ep_global": ep_global, "steps": state["steps"],
+                    "best_wer": best_wer, "patience": patience,
+                    "model": model.state_dict(),
+                    "proj": proj.state_dict() if proj is not None else None},
+                   resume_path)
+
+    # Resume from an interrupted run: reload weights and continue past the last
+    # completed epoch. Weights are restored; the optimizer is rebuilt fresh and the
+    # scheduler is fast-forwarded to the resumed step (matches the CSRL recipe).
+    if (not fresh_start) and os.path.exists(resume_path):
+        rz = torch.load(resume_path, map_location=DEVICE, weights_only=False)
+        model.load_state_dict(rz["model"])
+        if proj is not None and rz.get("proj") is not None:
+            proj.load_state_dict(rz["proj"])
+        best_wer = rz["best_wer"]; patience = rz["patience"]
+        ep_global = rz["ep_global"]; state["steps"] = rz["steps"]
+        if rz["phase"] == 1:
+            start_p1 = rz["epoch_in_phase"]
+        else:
+            start_p1, start_p2 = p1_epochs, rz["epoch_in_phase"]
+        print(f"[{tag}] resuming from phase {rz['phase']} "
+              f"epoch-in-phase {rz['epoch_in_phase']} (global epoch {ep_global})")
 
     # ---- Phase 1: frozen backbone, head (+ distillation projection) only ----
-    freeze_backbone(model)
-    opt1 = make_opt_phase1(model, cfg["phase1_lr"], cfg["weight_decay"])
-    if proj is not None:
-        opt1.add_param_group({"params": list(proj.parameters()), "lr": cfg["phase1_lr"]})
-    sch1 = make_sched(opt1, max(p1_epochs, 1), len(train_loader))
-    print(f"[{tag}] PHASE 1: {p1_epochs} epochs, frozen backbone")
-    for _ in range(p1_epochs):
-        ep_global += 1
-        tl_ = _run_epoch(opt1, sch1)
-        wer = _validate_and_log(ep_global, tl_)
-        if wer < best_wer:
-            best_wer = wer
-            torch.save({"epoch": ep_global, "model": model.state_dict(),
-                        "wer": wer}, best_path)
+    if start_p2 == 0:
+        freeze_backbone(model)
+        opt1 = make_opt_phase1(model, cfg["phase1_lr"], cfg["weight_decay"])
+        if proj is not None:
+            opt1.add_param_group({"params": list(proj.parameters()), "lr": cfg["phase1_lr"]})
+        sch1 = make_sched(opt1, max(p1_epochs, 1), len(train_loader))
+        for _ in range(start_p1 * len(train_loader)):  # fast-forward on resume
+            sch1.step()
+        print(f"[{tag}] PHASE 1: {p1_epochs} epochs, frozen backbone"
+              + (f" (resume at {start_p1 + 1})" if start_p1 else ""))
+        for e in range(start_p1, p1_epochs):
+            ep_global += 1
+            tl_ = _run_epoch(opt1, sch1)
+            wer = _validate_and_log(ep_global, tl_)
+            if wer < best_wer:
+                best_wer = wer
+                torch.save({"epoch": ep_global, "model": model.state_dict(),
+                            "wer": wer}, best_path)
+            if (e + 1) % save_every == 0:
+                _save_resume(1, e + 1)
+        _save_resume(1, p1_epochs)
 
     # ---- Phase 2: unfrozen, differential learning rates ----
     unfreeze_backbone(model)
@@ -262,8 +303,11 @@ def train_reverse(run_dir,
         opt2.add_param_group({"params": list(proj.parameters()),
                               "lr": cfg["phase2_lr_head"]})
     sch2 = make_sched(opt2, max(p2_epochs, 1), len(train_loader))
-    print(f"[{tag}] PHASE 2: {p2_epochs} epochs, unfrozen + differential LR")
-    for _ in range(p2_epochs):
+    for _ in range(start_p2 * len(train_loader)):      # fast-forward on resume
+        sch2.step()
+    print(f"[{tag}] PHASE 2: {p2_epochs} epochs, unfrozen + differential LR"
+          + (f" (resume at {start_p2 + 1})" if start_p2 else ""))
+    for e in range(start_p2, p2_epochs):
         ep_global += 1
         tl_ = _run_epoch(opt2, sch2)
         wer = _validate_and_log(ep_global, tl_)
@@ -276,6 +320,8 @@ def train_reverse(run_dir,
             if patience >= cfg["early_stopping_patience"]:
                 print(f"[{tag}] early stopping at epoch {ep_global}")
                 break
+        if (e + 1) % save_every == 0:
+            _save_resume(2, e + 1)
 
     handle.remove()
     if not os.path.exists(best_path):   # phase 2 empty (tiny smoke run): save final
