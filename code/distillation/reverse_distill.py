@@ -185,6 +185,7 @@ def train_reverse(run_dir,
     steps = 0
     for ep in range(epochs):
         model.train()
+        ep_loss, ep_batches = 0.0, 0
         for x, tg, il, tl, names in train_loader:
             x = x.to(DEVICE)
             opt.zero_grad(set_to_none=True)
@@ -211,12 +212,18 @@ def train_reverse(run_dir,
             scaler.step(opt)
             scaler.update()
             steps += 1
+            ep_loss += float(loss.item()); ep_batches += 1
 
-        wer, det, _ = skel_evaluate(model, dev_loader, cfg, DEVICE, log_prior)
+        train_loss = ep_loss / max(ep_batches, 1)
+        # Passing the criterion makes evaluate return the dev CTC loss too.
+        wer, det, val_loss = skel_evaluate(model, dev_loader, cfg, DEVICE,
+                                           log_prior, criterion=criterion)
         tag = "distill" if enabled else "control"
-        print(f"[{tag}] epoch {ep + 1}/{epochs} | dev WER {wer * 100:.2f}%")
+        print(f"[{tag}] epoch {ep + 1}/{epochs} | train loss {train_loss:.3f} | "
+              f"val loss {val_loss:.3f} | dev WER {wer * 100:.2f}%")
         with open(os.path.join(run_dir, "validations.txt"), "a") as f:
-            f.write(f"epoch {ep + 1} Steps: {steps} WER {wer * 100:.2f}\n")
+            f.write(f"epoch {ep + 1} Steps: {steps} trainloss {train_loss:.4f} "
+                    f"valloss {val_loss:.4f} WER {wer * 100:.2f}\n")
         if wer < best_wer:
             best_wer = wer
             torch.save({"epoch": ep + 1, "model": model.state_dict(),
