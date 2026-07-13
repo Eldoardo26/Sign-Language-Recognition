@@ -92,6 +92,33 @@ discrimination.
 This contradicts the hypothesis that motivated the work — a teacher focused on hand
 shape and motion should above all reduce **substitutions**. Substitutions went up.
 
+### The reverse direction: a stronger teacher
+
+The forward experiments all have the weaker model as the teacher. Swapping the roles —
+the **Signformer** (39.54) teaching the **skeleton** model (47.81) — is the
+conventional strong-to-weak distillation, and tests whether the neutral result was
+just a matter of teacher quality. Each regime is run against a matched no-teacher
+control under the same 0.30 WER margin (development WER):
+
+| Regime | Control | Distilled | Δ | |
+|---|---:|---:|---:|---|
+| From scratch | 48.51 | 48.99 | +0.48 | **hurts** |
+| Warm-started | 47.39 | 47.79 | +0.40 | **hurts** |
+
+In both regimes the transfer makes the student **worse** than its control, beyond the
+margin. A teacher 6.9 test-WER points **stronger** than the student still fails to
+help — so the binding constraint is not teacher quality but the **cross-modal transfer
+itself**: the two modalities encode the sign along incompatible axes, and pulling one
+representation towards the other is unhelpful weak-to-strong and harmful strong-to-weak.
+
+This is produced by `run_reverse_{warm,scratch}_distill.ipynb`; each notebook trains
+the distilled and the control arm and prints the verdict.
+
+> **On the optimizer.** The configs request SophiaG, but that package was not installed,
+> so the Signformer runs fell back to plain Adam — every reported number is Adam's.
+> The controlled comparisons hold the optimizer fixed across arms, so the verdicts are
+> unaffected; only the absolute numbers might move under SophiaG.
+
 ---
 
 ## Layout
