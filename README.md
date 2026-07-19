@@ -314,6 +314,16 @@ For data and checkpoints, see **[dataset/DATA.md](dataset/DATA.md)**.
 
 ## Reproducing
 
+First, check that everything is importable and the models build on your machine:
+
+```bash
+python tests/smoke_test.py
+```
+
+It needs no data (data-dependent checks skip cleanly) and finishes in under a minute;
+`ENV` lines flag heavyweight dependencies (TensorFlow) missing from your environment,
+not repository defects. Then:
+
 ```bash
 python code/csrl_skeleton/extract_wholebody_133.py       # 1a. RTMW keypoints from raw frames
 python code/csrl_skeleton/prepare_phoenix_133.py         # 1b. pack into split pickles
