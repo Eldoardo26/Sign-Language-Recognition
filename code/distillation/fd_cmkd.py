@@ -109,6 +109,17 @@ def _freq_decouple(x):
     return x_low, x_high
 
 
+def _similarity_preserving(s, t, eps=1e-8):
+    """Relational KD (Tung & Mori, ICCV 2019): match the row-normalised
+    frame-frame Gram matrices of one (L, D) student/teacher pair. Transfers the
+    representation's *structure* (which frames are similar), not its values, so
+    complementary modalities need not share a geometry -- the fix for the neutral
+    value-matching transfer."""
+    Gs = F.normalize(s @ s.t(), p=2, dim=1, eps=eps)
+    Gt = F.normalize(t @ t.t(), p=2, dim=1, eps=eps)
+    return ((Gs - Gt) ** 2).sum() / (s.shape[0] ** 2)
+
+
 class FDCMKDModule(nn.Module):
     """Trainable components of FD-CMKD: the student-to-teacher projection and
     the two shared classifiers (Phi_low, Phi_high) over the shared vocabulary.
@@ -121,7 +132,8 @@ class FDCMKDModule(nn.Module):
         self.phi_high = nn.Linear(teacher_dim, n_shared_classes)
 
     def forward(self, s_feat, t_feat, has_t, lengths, targets_shared,
-                tgt_lengths, ctc, low_w=1.0, high_w=0.25):
+                tgt_lengths, ctc, low_w=1.0, high_w=0.25, disable_dft=False,
+                feat_mode="fd"):
         """Compute the FD-CMKD terms for one batch.
 
         Args:
@@ -141,8 +153,17 @@ class FDCMKDModule(nn.Module):
 
         s_std = _standardize(s_proj)
         t_std = _standardize(t_feat)
-        s_low, s_high = _freq_decouple(s_std)
-        t_low, t_high = _freq_decouple(t_std)
+        use_rkd = (feat_mode == "rkd_sp")
+        no_split = disable_dft or use_rkd
+        if no_split:
+            # RQ2 ablation (plain MSE) OR relational mode — no frequency split.
+            # The high band is zeroed, so l_high and the phi_high CTC terms vanish
+            # (handled below). Default FD path is unchanged.
+            s_low, s_high = s_std, torch.zeros_like(s_std)
+            t_low, t_high = t_std, torch.zeros_like(t_std)
+        else:
+            s_low, s_high = _freq_decouple(s_std)
+            t_low, t_high = _freq_decouple(t_std)
 
         # valid-frame mask (padding excluded); teacher terms only where has_t
         frame_mask = (torch.arange(T, device=device).unsqueeze(0)
@@ -150,9 +171,23 @@ class FDCMKDModule(nn.Module):
         fm = (frame_mask & has_t.unsqueeze(1)).unsqueeze(-1).float()
         denom = fm.sum().clamp(min=1.0) * s_low.shape[-1]
 
-        l_low = (((s_low - t_low) ** 2) * fm).sum() / denom              # Eq. 8
-        l_high = (((_sigma(s_high) - _sigma(t_high)) ** 2) * fm).sum() / denom  # Eq. 9
-        feat_loss = low_w * l_low + high_w * l_high
+        if use_rkd:
+            # relational (similarity-preserving) feature loss, per sequence
+            tot, cnt = s_feat.new_zeros(()), 0
+            for i in range(N):
+                if not bool(has_t[i]):
+                    continue
+                L = int(lengths[i].item())
+                if L < 2:
+                    continue
+                tot = tot + _similarity_preserving(s_std[i, :L], t_std[i, :L])
+                cnt += 1
+            feat_loss = tot / max(cnt, 1)
+            l_low = l_high = feat_loss.detach()
+        else:
+            l_low = (((s_low - t_low) ** 2) * fm).sum() / denom              # Eq. 8
+            l_high = (((_sigma(s_high) - _sigma(t_high)) ** 2) * fm).sum() / denom  # Eq. 9
+            feat_loss = low_w * l_low + high_w * l_high
 
         # --- shared-classifier alignment (Eq. 10), CTC-adapted --------------
         in_lens = lengths.long().clamp(max=T).to(device)
@@ -170,9 +205,11 @@ class FDCMKDModule(nn.Module):
                        in_lens[idx], tgt_lens[idx])
 
         align = (_ctc_branch(self.phi_low(s_low))
-                 + _ctc_branch(self.phi_high(s_high))
-                 + _ctc_branch(self.phi_low(t_low), subset=has_t)
-                 + _ctc_branch(self.phi_high(t_high), subset=has_t))
+                 + _ctc_branch(self.phi_low(t_low), subset=has_t))
+        if not no_split:
+            align = (align
+                     + _ctc_branch(self.phi_high(s_high))
+                     + _ctc_branch(self.phi_high(t_high), subset=has_t))
 
         return {"feat": feat_loss, "align": align,
                 "low": l_low.detach(), "high": l_high.detach()}

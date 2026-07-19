@@ -117,10 +117,16 @@ def make_dataloaders(data_dir: str, gloss_to_ids, cfg: dict):
     test_ds = TSSIDataset(test_raw, gloss_to_ids, is_train=False,
                           augment=False, max_frames=cfg["max_frames"])
 
+    # Dataloader-bound: TSSI generation runs on the loader. Set NUM_WORKERS>0 on
+    # Linux (fork) to parallelise it and keep the GPU fed. Keep 0 on Windows
+    # (spawn can't pickle the gloss_to_ids closure).
+    nw = int(os.environ.get("NUM_WORKERS", cfg.get("num_workers", 0)))
+    pw = nw > 0
     train_loader = DataLoader(train_ds, cfg["batch_size"], shuffle=True,
-                              collate_fn=collate_ctc, num_workers=0, drop_last=True)
+                              collate_fn=collate_ctc, num_workers=nw,
+                              persistent_workers=pw, drop_last=True)
     dev_loader = DataLoader(dev_ds, cfg["batch_size"], shuffle=False,
-                            collate_fn=collate_ctc, num_workers=0)
+                            collate_fn=collate_ctc, num_workers=nw, persistent_workers=pw)
     test_loader = DataLoader(test_ds, cfg["batch_size"], shuffle=False,
-                             collate_fn=collate_ctc, num_workers=0)
+                             collate_fn=collate_ctc, num_workers=nw, persistent_workers=pw)
     return train_loader, dev_loader, test_loader, train_raw, dev_raw, test_raw

@@ -64,7 +64,19 @@ class FDCMKDTrainManager(TrainManager):
         self.low_w = float(dc.get("low_w", 1.0))
         self.high_w = float(dc.get("high_w", 0.25))
         self.lambda_align = float(dc.get("lambda_align", 0.3))
+        # RQ2 ablation switch: True -> plain MSE, no frequency decoupling.
+        self.disable_dft = bool(dc.get("disable_dft", False))
+        # Feature-loss mode: "fd" (frequency-decoupled, default) or "rkd_sp"
+        # (relational similarity-preserving — transfers structure, not values).
+        self.feat_mode = str(dc.get("feat_mode", "fd"))
         self.align_ctc = torch.nn.CTCLoss(blank=0, zero_infinity=True)
+
+        # Linear warmup of the distillation weight, off by default. Only useful
+        # when training from scratch: the projection and the shared classifiers
+        # start random, so their gradient is noise until the encoder has left the
+        # CTC-blank collapse. With distill_warmup_steps = 0 the factor is always
+        # 1.0 and the warm-started, published runs are unaffected.
+        self.distill_warmup = int(dc.get("distill_warmup_steps", 0))
 
         # append the new parameters to the existing optimizer, then keep the
         # scheduler's per-group lists consistent with the added group
@@ -106,10 +118,13 @@ class FDCMKDTrainManager(TrainManager):
         targets_shared = self.student_to_shared[batch.gls]
         fd = self.fd(encoder_output, t_batch, has_t, batch.sgn_lengths,
                      targets_shared, batch.gls_lengths, self.align_ctc,
-                     low_w=self.low_w, high_w=self.high_w)
+                     low_w=self.low_w, high_w=self.high_w,
+                     disable_dft=self.disable_dft, feat_mode=self.feat_mode)
 
-        total = norm_task + (self.lambda_feat * fd["feat"]
-                             + self.lambda_align * fd["align"]) / self.batch_multiplier
+        ramp = (1.0 if self.distill_warmup <= 0
+                else min(1.0, self.steps / self.distill_warmup))
+        total = norm_task + ramp * (self.lambda_feat * fd["feat"]
+                                    + self.lambda_align * fd["align"]) / self.batch_multiplier
         total.backward()
 
         if self.clip_grad_fun is not None:

@@ -8,7 +8,14 @@ import torch
 PAD_IDX, UNK_IDX = 0, 1
 
 
-def build_merge_map(glosses: set[str], similarity_threshold: float = 0.85) -> dict[str, str]:
+def build_merge_map(glosses: set[str], similarity_threshold: float = 1.0) -> dict[str, str]:
+    # A fuzzy string-similarity merge (threshold < 1.0) collapses genuinely distinct
+    # glosses that happen to share characters, shrinking the vocabulary below the
+    # standard PHOENIX-2014T size (1085 train glosses). That corrupts the references
+    # and makes the WER incomparable to the literature. Disabled by default; only the
+    # hyphen-safe merges in _apply_safe_hyphen_merges are applied.
+    if similarity_threshold >= 1.0:
+        return {}
     gl = sorted(glosses)
     mm = {}
     for i, g1 in enumerate(gl):
@@ -36,7 +43,7 @@ def _toks(g: str) -> list[str]:
 
 
 def build_vocab_from_raw(train_raw: dict, dev_raw: dict, test_raw: dict,
-                         sim_thr: float = 0.85) -> dict:
+                         sim_thr: float = 1.0) -> dict:
     allg = set()
     for raw in (train_raw, dev_raw, test_raw):
         for s in raw.values():

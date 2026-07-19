@@ -1,9 +1,9 @@
-# Nota: git non puo' re-includere un file se una cartella genitore e' esclusa.
-# Per questo NON escludiamo le cartelle dei trial Optuna, ma solo il loro
-# contenuto pesante. Cosi' i validations.txt — che sono i risultati
-# sperimentali — restano tracciati.
+# Note: git cannot re-include a file when a parent directory is excluded.
+# For this reason the Optuna trial directories are NOT excluded as folders,
+# only their heavy content — so the validations.txt files, which are the
+# experimental results, stay tracked.
 
-# ── Dati e feature derivate (non ridistribuibili, multi-GB) ──────────────────
+# ── Data and derived features (non-redistributable, multi-GB) ──────────────────
 dataset/features/
 dataset/pose/
 dataset/tssi_cache/
@@ -11,22 +11,22 @@ dataset/annotations/
 dataset/i3d_features_rwth*/
 dataset/checkpoints/
 
-# La copia integra delle feature vive qui (1.8 GB): mai committarla.
+# The full feature copy lives here (1.8 GB): never commit it.
 code/signformer/data/
 code/csrl_skeleton/data/
 phoenix14t.pami0.*
 Phoenix-2014T.*
 base_annotations/
 
-# Log di training verbosi
+# Verbose training logs
 *.log
 
-# ── Checkpoint (pubblicati come GitHub Release, vedi dataset/DATA.md) ────────
+# ── Checkpoints (published as GitHub Releases, see dataset/DATA.md) ────────
 *.ckpt
 *.pt
 *.pth
 
-# ── Artefatti di training ───────────────────────────────────────────────────
+# ── Training artefacts ───────────────────────────────────────────────────
 **/tensorboard/
 events.out.tfevents.*
 **/gls/
@@ -54,3 +54,11 @@ code/distillation/_smoke_*.yaml
 
 # training output (never the published checkpoints)
 runs/
+
+# Stray training / Optuna trial directories (organised runs live in runs/)
+code/distillation/optuna_fd_*
+code/distillation/scratch_*
+code/distillation/warm_*
+code/signformer/optuna_trial_*
+code/signformer/sign_sample/
+dataset/features/transformer_feats/

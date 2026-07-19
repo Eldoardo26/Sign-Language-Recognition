@@ -71,10 +71,14 @@ def beam_decode(log_probs_TBC: torch.Tensor,
                 for c in cand:
                     c = int(c)
                     nlp = sc + lp[t, c]
-                    if c == 0:
+                    if c == 0 or c == last:
+                        # Blank, or a repeat of the current label: under the CTC
+                        # collapse both leave the emitted prefix unchanged. Fold the
+                        # probability mass back into that prefix instead of dropping
+                        # it. The previous `continue` discarded the repeat mass, which
+                        # biased the decoder towards emitting new labels and made beam
+                        # search score several points worse than greedy.
                         key = (pre, last)
-                    elif c == last:
-                        continue
                     else:
                         key = (pre + (c,), c)
                     if key not in nb or nb[key] < nlp:
