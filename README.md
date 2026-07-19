@@ -80,14 +80,6 @@ Three geometries of the feature term, identical warm-start protocol:
 All three land within 0.11 test-WER points. The frequency decoupling — the method's
 distinctive component — confers no measurable advantage over plain feature matching.
 
-### The reverse direction fails too
-
-With the roles swapped — the stronger Signformer (41.53 test) teaching the weaker
-skeleton model — the transfer *hurts*, in both the warm and the from-scratch regime,
-each read against its own matched no-teacher control. A teacher ~6.9 test-WER points
-better than its student still fails to transfer across the modality gap: the
-limitation is the cross-modal feature imitation itself, not teacher quality.
-
 ### Why the transfer does not help
 
 Distillation is not inert: it changes *which* errors the student makes, not *how
@@ -105,6 +97,30 @@ failure a hand-shape-aware teacher was supposed to fix — barely move (+0.04 he
 −0.49 from scratch). The teacher succeeds in telling the student **that** a sign is
 being articulated; it does not teach it **which**.
 
+### The reverse direction: a stronger teacher
+
+The forward experiments all have the weaker model as the teacher. Swapping the roles —
+the **Signformer** teaching the **skeleton** model — is the conventional
+strong-to-weak distillation, and tests whether the neutral result was just a matter
+of teacher quality. This study was run in the earlier 75-keypoint configuration
+(teacher 39.54 dev, skeleton student 47.81 dev, a ~6.9-point test-WER gap in the
+teacher's favor); each regime is read against a matched no-teacher control under the
+same 0.30 WER margin (development WER):
+
+| Regime | Control | Distilled | Δ | |
+|---|---:|---:|---:|---|
+| From scratch | 48.51 | 48.99 | +0.48 | **hurts** |
+| Warm-started | 47.39 | 47.79 | +0.40 | **hurts** |
+
+In both regimes the transfer makes the student **worse** than its control, beyond the
+margin. A teacher 6.9 test-WER points **stronger** than the student still fails to
+help — so the binding constraint is not teacher quality but the **cross-modal transfer
+itself**: the two modalities encode the sign along incompatible axes, and pulling one
+representation towards the other is unhelpful weak-to-strong and harmful strong-to-weak.
+
+This is produced by `run_reverse_{warm,scratch}_distill.ipynb`; each notebook trains
+the distilled and the control arm and prints the verdict.
+
 ### From transfer to fusion
 
 If imitation fails, is the skeleton information redundant? No. With both encoders
@@ -117,6 +133,11 @@ misaligned, so frame-level feature fusion collapses and only sequence-level rout
 cross-attention and a shared CTC head, warm-starting the skeleton branch from the
 teacher checkpoint. That model reaches **33.30 dev / 33.56 test** — below the
 frozen-feature oracle, and ~8 points below the Signformer baseline.
+
+> **On the optimizer.** The configs request SophiaG, but that package was not installed,
+> so the Signformer runs fell back to plain Adam — every reported number is Adam's.
+> The controlled comparisons hold the optimizer fixed across arms, so the verdicts are
+> unaffected; only the absolute numbers might move under SophiaG.
 
 ---
 
@@ -275,9 +296,10 @@ Two things are worth knowing before a training run.
 at import, so it only ever runs on the CPU. `tensorflow-cpu` is a valid, much smaller
 substitute.
 
-**SophiaG is an optional extra, and its absence is silent.** The published student
-results were trained with it. Without it, `main/builders.py` falls back to Adam and
-prints one line saying so, and the numbers will not reproduce.
+**SophiaG is an optional extra, and its absence is silent.** The configs request it,
+but without the package `main/builders.py` falls back to Adam and prints one line
+saying so — and **every number reported here was produced under that Adam fallback**
+(see the optimizer note above). To actually train with SophiaG:
 
 ```bash
 uv sync --extra sophia
@@ -285,8 +307,8 @@ uv sync --extra sophia
 
 then delete the trailing `from sophia.sophia import SophiaG` line from the installed
 package's `__init__.py`, an upstream defect that breaks the import. Setting
-`optimizer: adam` in `configs/sign.yaml` is the honest alternative if you do not need
-to match the reported figures.
+`optimizer: adam` in `configs/sign.yaml` makes the fallback explicit and reproduces
+the reported figures.
 
 For data and checkpoints, see **[dataset/DATA.md](dataset/DATA.md)**.
 
